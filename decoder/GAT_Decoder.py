@@ -1,0 +1,120 @@
+import logging
+import torch
+from torch import nn
+from torch.distributions import Categorical
+from src_batch.decoder.PointerAttention import PointerAttention
+from src_batch.decoder.mask_capacity import update_state, update_mask
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+    
+class GAT_Decoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super(GAT_Decoder, self).__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+
+        self.pointer = PointerAttention(8, input_dim, hidden_dim)
+
+        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False) # +1 to adjust for the concatenated capacity in line 52
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+
+        self.reset_parameters()
+        
+    def reset_parameters(self):
+        """
+        This function initializes the parameters of the attention layer.
+        It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
+        """
+        nn.init.xavier_uniform_(self.fc.weight.data)
+        nn.init.xavier_uniform_(self.fc1.weight.data)
+
+    def forward(self, encoder_inputs, pool, capacity, demand, n_steps,T, greedy=True, depot_visits=0):
+        
+        device = encoder_inputs.device
+
+        batch_size = encoder_inputs.size(0)  # Indicates the number of graphs in the batch
+        seq_len = encoder_inputs.size(1)    # Feature dimension
+        
+        n_steps = seq_len +1 # To account for the route starting and ending at the depot
+
+        mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+        mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+
+        dynamic_capacity = capacity.expand(batch_size, -1).to(device)
+        demands = demand.to(device)
+
+        index = torch.zeros(batch_size, dtype=torch.long, device=device)
+        
+        # Debugging log
+        # logging.debug(f'encoder_inputs: {encoder_inputs.shape}')
+        # logging.debug(f'batch_size: {batch_size}')
+        # logging.debug(f'seq_len: {seq_len}')
+        # logging.debug(f'dynamic_capacity: {dynamic_capacity}')
+        # logging.debug(f'demands: {demands.shape}')
+
+        log_ps = []
+        actions = []
+        
+        i=0
+        while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
+        # for i in range(n_steps):
+            if not mask1[:, 1:].eq(0).any():
+                print('break')
+                break
+            if i == 0:   
+                _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
+                # print(f'_input: {_input}\n\n')
+
+            # -----------------------------------------------------------------------------pool+cat(first_node,current_node)
+            decoder_input = torch.cat([_input, dynamic_capacity], -1)
+            decoder_input = self.fc(decoder_input)
+            pool = self.fc1(pool.to(device))
+            decoder_input = decoder_input + pool
+            # 
+            
+            if i == 0:
+                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            p = self.pointer(decoder_input, encoder_inputs, mask,T)
+            
+            #NaN values found in p. Replaced with zeroes.
+            # if torch.isnan(p).any():
+            #     p = torch.nan_to_num(p, nan=0.0, posinf=1.0, neginf=0.0)
+            #     logging.warning("NaN values found in p. Replaced with zeroes.")
+            # # Ensure the probabilities sum to 1
+            # p = p / p.sum(dim=-1, keepdim=True)
+            # p = torch.nan_to_num(p, nan=1.0 / p.size(-1))
+                
+            dist = Categorical(p)
+            if greedy:
+                _, index = p.max(dim=-1)
+            else:
+                index = dist.sample()
+                
+            # print(f'index: {index}\n\n')
+            actions.append(index.data.unsqueeze(1))
+            log_p = dist.log_prob(index)
+            is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
+            log_p = log_p * (1. - is_done)
+
+            log_ps.append(log_p.unsqueeze(1))
+
+            dynamic_capacity, depot_visits = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item(), depot_visits)
+            # print(f'dynamic_capacity: {dynamic_capacity}\n\n')
+            mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+
+            # logging.debug(f'mask1: {mask1}')
+            # logging.debug(f'dynamic_capacity: {dynamic_capacity}')
+            
+            _input = torch.gather(
+                                  encoder_inputs, 1,
+                                  index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
+                                  ).squeeze(1)
+            i+=1
+        log_ps = torch.cat(log_ps, dim=1)
+        actions = torch.cat(actions, dim=1)
+
+        log_p = log_ps.sum(dim=1)
+
+        return actions, log_p, depot_visits
