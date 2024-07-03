@@ -6,7 +6,7 @@ from src_batch.train.train_model import Train
 
 if __name__ == "__main__":
     filename = 'instance_creator/instance_data.csv'
-    batch_size = 1
+    batch_size = 2
     
     IG = InstanceGenerator()
     data_loader = IG.get_dataloader(filename, batch_size=batch_size)
@@ -22,11 +22,12 @@ if __name__ == "__main__":
     capacity = data_loader.dataset[0].capacity
     n_steps = 9
     lr = 0.001
+    beam_width = 5 # Beam width for beam search
     
     
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity).to(device)
     
     baseline = RolloutBaseline(model, data_loader=data_loader, n_steps=n_steps)
     
-    trainer = Train(model, data_loader, device, baseline, n_steps=9, lr=lr)
-    trainer.train(n_epochs=20)
+    trainer = Train(model, data_loader, device, baseline, n_steps=9, beam_width=beam_width, lr=lr)
+    trainer.train(n_epochs=10)

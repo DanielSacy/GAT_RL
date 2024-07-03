@@ -1,21 +1,17 @@
 import torch
+import numpy as np
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import copy
-from scipy.stats import ttest_rel
 
 class RolloutBaseline:
-    def __init__(self, model, data_loader, n_steps, n_nodes=50, device='cuda', warmup_beta=0.8, update_freq=5, epoch=0):
+    def __init__(self, model, data_loader, n_steps, n_rollouts=10, device='cuda'):
         self.model = model
         self.data_loader = data_loader
         self.n_steps = n_steps
-        self.n_nodes = n_nodes
+        self.n_rollouts = n_rollouts
         self.device = device
-        self.warmup_beta = warmup_beta
-        self.update_freq = update_freq
-        self.alpha = 0.0  # Baseline adaptation rate
-        self.M = None  # Initialize the moving average for EMA
-        self._update_baseline(model, epoch)
+        self._update_baseline(model, 0)
 
     def _update_baseline(self, model, epoch):
         self.model = self.copy_model(model)
@@ -23,24 +19,27 @@ class RolloutBaseline:
         print(f'Evaluating baseline model on baseline dataset (epoch = {epoch})')
         self.bl_vals = self.rollout(self.model, self.data_loader).cpu().numpy()
         self.mean = self.bl_vals.mean()
-        self.epoch = epoch
 
     def copy_model(self, model):
         new_model = copy.deepcopy(model)
         return new_model
 
     def rollout(self, model, data_loader):
-        model.eval()
         costs_list = []
-        for data in tqdm(data_loader, desc='Rollout greedy execution'):
+        for data in data_loader:
+        # for data in tqdm(data_loader, desc='Rollout greedy execution'):
             data = data.to(self.device)
             with torch.no_grad():
-                actions, _, _ = model(data, self.n_steps, greedy=True, T=1)
-                reward = self.compute_reward(actions, data)
-                costs_list.append(reward)
+                actions, log_p, depot_visits = model(data, self.n_steps, greedy=True, T=1)
+                cost = self.compute_reward(actions, data)
+                costs_list.append(cost)
+
         return torch.stack(costs_list)
 
     def compute_reward(self, actions, data):
+        """
+        Compute the CVRP reward based on the actions taken.
+        """
         total_distance = 0
         batch_size = actions.size(0)
         
@@ -72,9 +71,9 @@ class RolloutBaseline:
                 if capacity_left < 0:
                     route_distance += 300  # penalty for exceeding capacity
 
-            total_distance += route_distance
-        reward = -total_distance
-        return torch.tensor([reward], dtype=torch.float32, device=self.device)
+            rewards.append(-route_distance)  # negative reward for minimizing distance
+
+        return torch.tensor(rewards, dtype=torch.float32, device=self.device)
 
     def get_edge_distance(self, edge_index, edge_attr, current_location, next_location):
         for i, (from_node, to_node) in enumerate(edge_index):
@@ -82,27 +81,8 @@ class RolloutBaseline:
                 return edge_attr[i].item()
         return 0  # Shouldn't reach here if the graph is fully connected
 
-    def eval(self, data, reward):
-        if self.alpha == 0:
-            return self.ema_eval(reward)
-        if self.alpha < 1:
-            v_ema = self.ema_eval(reward)
-        else:
-            v_ema = 0.0
-        with torch.no_grad():
-            v_b, _, _ = self.model(data, self.n_steps, greedy=True, T=1)
-            v_b = self.compute_reward(v_b, data)
-        return self.alpha * v_b + (1 - self.alpha) * v_ema
-
-    def ema_eval(self, reward):
-        reward_tensor = torch.tensor(reward, dtype=torch.float32, device=self.device) if not isinstance(reward, torch.Tensor) else reward
-        if self.M is None:
-            self.M = reward_tensor.mean()
-        else:
-            self.M = self.warmup_beta * self.M + (1. - self.warmup_beta) * reward_tensor.mean()
-        return self.M.detach()
-
+    def eval(self, data, cost):
+        return self.rollout(self.model, self.data_loader).mean()
+    
     def epoch_callback(self, model, epoch):
-        if epoch % self.update_freq == 0:
-            self._update_baseline(model, epoch)
-        self.alpha = min(1, (epoch + 1) / float(self.update_freq))
+        self._update_baseline(model, epoch)
