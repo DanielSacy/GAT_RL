@@ -77,7 +77,7 @@ class GAT_Decoder(nn.Module):
             if i == 0:
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
-            
+            logging.debug(f'p: {p}')
             #NaN values found in p. Replaced with zeroes.
             # if torch.isnan(p).any():
             #     p = torch.nan_to_num(p, nan=0.0, posinf=1.0, neginf=0.0)
@@ -92,7 +92,6 @@ class GAT_Decoder(nn.Module):
             else:
                 index = dist.sample()
                 
-            # print(f'index: {index}\n\n')
             actions.append(index.data.unsqueeze(1))
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()

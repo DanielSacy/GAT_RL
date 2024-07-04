@@ -22,12 +22,10 @@ if __name__ == "__main__":
     capacity = data_loader.dataset[0].capacity
     n_steps = 9
     lr = 0.001
-    beam_width = 5 # Beam width for beam search
-    
     
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity).to(device)
     
     baseline = RolloutBaseline(model, data_loader=data_loader, n_steps=n_steps)
     
-    trainer = Train(model, data_loader, device, baseline, n_steps=9, beam_width=beam_width, lr=lr)
+    trainer = Train(model, data_loader, device, baseline, n_steps=9, lr=lr)
     trainer.train(n_epochs=10)

@@ -40,6 +40,8 @@ def run_model_on_data(filename, batch_size=1):
     layers=1 
     heads=1 
     capacity = data_loader.dataset[0].capacity
+    greedy = True
+    T = 2.5 # Temperature for softmax based on Kun et al. (2021)
     
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity)
     model = model.to(device)
@@ -53,7 +55,7 @@ def run_model_on_data(filename, batch_size=1):
     for data in data_loader:
         data_count += 1
         data = data.to(device)
-        actions, log_p, depot_visits = model(data, n_steps, greedy=True, T=1)
+        actions, log_p, depot_visits = model(data, n_steps, greedy=greedy, T=1)
         all_actions.append(actions)
         all_log_p.append(log_p)
     print(f"Data count: {data_count*batch_size}")
