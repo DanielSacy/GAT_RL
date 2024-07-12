@@ -15,17 +15,19 @@ if __name__ == "__main__":
     
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 64
+    hidden_dim = 128
     dropout = 0.6
     layers = 4
     heads = 8
     capacity = data_loader.dataset[0].capacity
     n_steps = 9
     lr = 0.001
+    # greedy = False
+    # T = 2.5
     
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity).to(device)
     
-    baseline = RolloutBaseline(model, data_loader=data_loader, n_steps=n_steps)
+    baseline = RolloutBaseline(model, n_rollouts=30)
     
     trainer = Train(model, data_loader, device, baseline, n_steps=9, lr=lr)
     trainer.train(n_epochs=10)

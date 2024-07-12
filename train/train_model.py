@@ -21,8 +21,8 @@ class Train:
                 
                 # Compute reward and baseline
                 reward = self.baseline.compute_reward(actions, data)
-                baseline_reward = self.baseline.eval(data, self.n_steps)
-                
+                baseline_reward = self.baseline.rollout(data, self.n_steps)
+                print(f'Baseline reward: {baseline_reward}')
                 
                 advantage = reward - baseline_reward
                 
@@ -33,7 +33,7 @@ class Train:
                 loss.backward()
                 self.optimizer.step()
                 
-                print(f'Epoch {epoch:<5}, Loss: {loss:<8.3f}, Reward: {reward:<10}, Baseline: {baseline_reward:<10}, Advantage: {advantage:<10}')
+                print(f'Epoch {epoch:<5}, Loss: {loss:<8.3f}') #, Reward: {reward:<10}, Baseline: {baseline_reward:<10}, Advantage: {advantage:<10}')
                 
                 
 # import torch

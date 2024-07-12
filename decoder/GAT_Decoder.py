@@ -77,15 +77,7 @@ class GAT_Decoder(nn.Module):
             if i == 0:
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
-            logging.debug(f'p: {p}')
-            #NaN values found in p. Replaced with zeroes.
-            # if torch.isnan(p).any():
-            #     p = torch.nan_to_num(p, nan=0.0, posinf=1.0, neginf=0.0)
-            #     logging.warning("NaN values found in p. Replaced with zeroes.")
-            # # Ensure the probabilities sum to 1
-            # p = p / p.sum(dim=-1, keepdim=True)
-            # p = torch.nan_to_num(p, nan=1.0 / p.size(-1))
-                
+            
             dist = Categorical(p)
             if greedy:
                 _, index = p.max(dim=-1)
