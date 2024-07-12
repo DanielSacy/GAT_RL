@@ -37,7 +37,7 @@ class GAT_Decoder(nn.Module):
         batch_size = encoder_inputs.size(0)  # Indicates the number of graphs in the batch
         seq_len = encoder_inputs.size(1)    # Feature dimension
         
-        n_steps = seq_len +1 # To account for the route starting and ending at the depot
+        # n_steps = seq_len +1 # To account for the route starting and ending at the depot
 
         mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
         mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
@@ -67,17 +67,23 @@ class GAT_Decoder(nn.Module):
                 _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
                 # print(f'_input: {_input}\n\n')
 
-            # -----------------------------------------------------------------------------pool+cat(first_node,current_node)
+            # pool+cat(first_node,current_node)
             decoder_input = torch.cat([_input, dynamic_capacity], -1)
             decoder_input = self.fc(decoder_input)
             pool = self.fc1(pool.to(device))
             decoder_input = decoder_input + pool
-            # 
             
+            # If it's the first step, update the mask
             if i == 0:
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
             
+            # Check for NaN values in p
+            if torch.isnan(p).any():
+            #     # logging.warning("NaN values found in p. Replacing with zeroes.")
+                p = torch.nan_to_num(p, 0.1)
+
+            # Calculate the probability distribution for sampling
             dist = Categorical(p)
             if greedy:
                 _, index = p.max(dim=-1)
@@ -92,11 +98,7 @@ class GAT_Decoder(nn.Module):
             log_ps.append(log_p.unsqueeze(1))
 
             dynamic_capacity, depot_visits = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item(), depot_visits)
-            # print(f'dynamic_capacity: {dynamic_capacity}\n\n')
             mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
-
-            # logging.debug(f'mask1: {mask1}')
-            # logging.debug(f'dynamic_capacity: {dynamic_capacity}')
             
             _input = torch.gather(
                                   encoder_inputs, 1,

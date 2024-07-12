@@ -41,7 +41,7 @@ def run_model_on_data(filename, batch_size=1):
     heads=1 
     capacity = data_loader.dataset[0].capacity
     greedy = True
-    T = 2.5 # Temperature for softmax based on Kun et al. (2021)
+    T = 2.0 # Temperature for softmax based on Kun et al. (2021)
     
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity)
     model = model.to(device)

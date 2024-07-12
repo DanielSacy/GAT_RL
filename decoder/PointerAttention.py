@@ -59,5 +59,8 @@ class PointerAttention(nn.Module):
         x = torch.tanh(compatibility)
         x = x * (10)
         x = x.masked_fill(mask.bool(), float("-inf"))
-        scores = F.softmax(x/T, dim=-1)
+        
+        # Compute the softmax scores
+        scores = F.softmax(x / T, dim=-1)
+        
         return scores

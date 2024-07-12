@@ -13,7 +13,7 @@ class Model(nn.Module):
         self.hidden_dim = hidden_dim
         self.capacity = capacity
 
-    def forward(self, data,  n_steps, greedy=True, T=1):
+    def forward(self, data,  n_steps, greedy, T=1):
         x = self.encoder(data)  # Shape of x: (n_nodes, hidden_dim) 
         
         batch_size = data.batch.max().item() + 1

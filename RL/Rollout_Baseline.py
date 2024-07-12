@@ -11,6 +11,7 @@ class RolloutBaseline:
         """
         rewards = []
         for _ in range(self.n_rollouts):
+            # self.model.eval()
             actions, log_p, depot_visits = self.model(data, n_steps, greedy=True, T=1)
             reward = self.compute_reward(actions, data)
             rewards.append(reward)
