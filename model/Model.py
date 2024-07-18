@@ -5,15 +5,16 @@ from src_batch.decoder.GAT_Decoder import GAT_Decoder
 
 
 class Model(nn.Module):
-    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity):
+    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity, T):
         super(Model, self).__init__()
         self.encoder = ResidualEdgeGATEncoder(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads)
         self.decoder = GAT_Decoder(hidden_dim, hidden_dim)
+        self.T = T
         
         self.hidden_dim = hidden_dim
         self.capacity = capacity
 
-    def forward(self, data,  n_steps, greedy, T=1):
+    def forward(self, data,  n_steps, greedy, T):
         x = self.encoder(data)  # Shape of x: (n_nodes, hidden_dim) 
         
         batch_size = data.batch.max().item() + 1

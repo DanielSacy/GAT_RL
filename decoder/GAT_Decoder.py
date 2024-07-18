@@ -57,9 +57,9 @@ class GAT_Decoder(nn.Module):
         log_ps = []
         actions = []
         
-        i=0
-        while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
-        # for i in range(n_steps):
+        # i=0
+        # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
+        for i in range(n_steps):
             if not mask1[:, 1:].eq(0).any():
                 print('break')
                 break
@@ -78,10 +78,10 @@ class GAT_Decoder(nn.Module):
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
             
-            # Check for NaN values in p
-            if torch.isnan(p).any():
-            #     # logging.warning("NaN values found in p. Replacing with zeroes.")
-                p = torch.nan_to_num(p, 0.1)
+            # # Check for NaN values in p
+            # if torch.isnan(p).any():
+            # #     # logging.warning("NaN values found in p. Replacing with zeroes.")
+            #     p = torch.nan_to_num(p, 0.1)
 
             # Calculate the probability distribution for sampling
             dist = Categorical(p)
@@ -104,7 +104,8 @@ class GAT_Decoder(nn.Module):
                                   encoder_inputs, 1,
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
                                   ).squeeze(1)
-            i+=1
+            # i+=1
+            
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
 

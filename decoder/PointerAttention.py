@@ -58,9 +58,11 @@ class PointerAttention(nn.Module):
         compatibility = compatibility.squeeze(1)
         x = torch.tanh(compatibility)
         x = x * (10)
-        x = x.masked_fill(mask.bool(), float("-inf"))
+        # print(f'x1: {x}')
+        x = x.masked_fill(mask.bool(), float(-1e-2))#"-inf"))
+        # print(f'x2: {x}')
         
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
-        
+        # print(f'scores: {scores}')
         return scores

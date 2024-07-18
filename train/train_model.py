@@ -1,86 +1,82 @@
-# import torch
-# from torch import optim
-
-# class Train:
-#     def __init__(self, model, data_loader, device, baseline, n_steps, optimizer=None, lr=0.001):
-#         self.model = model
-#         self.data_loader = data_loader
-#         self.device = device
-#         self.baseline = baseline
-#         self.n_steps = n_steps
-#         self.optimizer = optimizer or optim.Adam(self.model.parameters(), lr=lr)
-        
-#     def train(self, n_epochs):
-#         self.model.to(self.device)
-        
-#         for epoch in range(n_epochs):
-#             for data in self.data_loader:
-#                 data = data.to(self.device)
-                
-#                 # Policy network
-#                 self.model.train()
-#                 actions, log_p, _ = self.model(
-#                     data, self.n_steps, greedy=False, T=1#2.5
-#                     )
-                
-#                 # Compute reward and baseline
-#                 reward = self.baseline.compute_reward(actions, data)
-                
-#                 self.model.eval()
-#                 with torch.no_grad():
-#                     baseline_actions, _, _ = self.model(
-#                     data, self.n_steps, greedy=True, T=1#2.5
-#                     )
-#                     baseline_reward = self.baseline.compute_reward(baseline_actions, data)
-                
-#                 print(f'Baseline reward: {baseline_reward}')
-                
-#                 advantage = reward - baseline_reward
-                
-#                 loss = -(log_p * advantage).mean()
-                
-#                 self.optimizer.zero_grad()
-#                 loss.backward()
-#                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-
-#                 self.optimizer.step()
-                
-#                 print(f'Epoch {epoch:<5}, Loss: {loss:<8.3f}, Reward: {reward:<10.3f}, Baseline: {baseline_reward:<10.3f}, Advantage: {advantage:<10.3f}')
-
 import torch
-from torch import optim
+import torch.optim as optim
+import numpy as np
+import os
+import time
+from src_batch.RL.Compute_Reward import compute_reward
+from src_batch.RL.Rollout_Baseline import rollout
 
-class Train:
-    def __init__(self, model, data_loader, device, baseline, n_steps, optimizer=None, lr=0.001):
-        self.model = model
-        self.data_loader = data_loader
-        self.device = device
-        self.baseline = baseline
-        self.n_steps = n_steps
-        self.optimizer = optimizer or optim.Adam(self.model.parameters(), lr=lr)
+def adv_normalize(adv):
+    std = adv.std()
+    assert std != 0. and not torch.isnan(std), 'Need nonzero std'
+    n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
+    return n_advs
+
+def train(model, rol_baseline, data_loader, validation_loader, folder, lr, n_steps, num_epochs, T):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    max_grad_norm = 2.0
+    
+    actor = model #Model(3, 1, hidden_node_dim, hidden_edge_dim, 0.0, conv_layers, 8, torch.tensor([steps])).to(device)
+    rol_baseline = rol_baseline #RolloutBaseline(actor, validation_loader, n_nodes=steps)
+    
+    actor_optim = optim.Adam(actor.parameters(), lr=lr)
+
+    costs = []
+    for epoch in range(num_epochs):
+        print("epoch:", epoch, "------------------------------------------------")
+        actor.train()
+
+        times, losses, rewards = [], [], []
+        epoch_start = time.time()
+        start = epoch_start
+
+        for batch_idx, data in enumerate(data_loader):
+            batch = batch.to(device)
+            tour_indices, tour_logp, depot_visits = actor(data, n_steps, greedy=False, T=T)
+
+            reward = compute_reward(tour_indices.detach(), data)
+            base_reward = rol_baseline.eval(data, n_steps)
+
+            advantage = (reward - base_reward)
+            if not advantage.ne(0).any():
+                print("advantage==0.")
+                
+            # Normalize the advantage
+            advantage = adv_normalize(advantage)
+            actor_loss = torch.mean(advantage.detach() * tour_logp)
+
+            actor_optim.zero_grad()
+            actor_loss.backward()
+            torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm)
+            actor_optim.step()
+
+            rewards.append(torch.mean(reward.detach()).item())
+            losses.append(torch.mean(actor_loss.detach()).item())
+
+            step = 200
+            if (batch_idx + 1) % step == 0:
+                end = time.time()
+                times.append(end - start)
+                start = end
+
+                mean_loss = np.mean(losses[-step:])
+                mean_reward = np.mean(rewards[-step:])
+
+                print('  Batch %d/%d, reward: %2.3f, loss: %2.4f, took: %2.4fs' %
+                      (batch_idx, len(data_loader), mean_reward, mean_loss, times[-1]))
+
+        rol_baseline.epoch_callback(actor, epoch)
+
+        epoch_dir = os.path.join(folder, '%s' % epoch)
+        if not os.path.exists(epoch_dir):
+            os.makedirs(epoch_dir)
+        save_path = os.path.join(epoch_dir, 'actor.pt')
+        torch.save(actor.state_dict(), save_path)
         
-    def train(self, n_epochs):
-        for epoch in range(n_epochs):
-            for data in self.data_loader:
-                data = data.to(self.device)
-                
-                # Policy network
-                self.model.train()
-                actions, log_p, _ = self.model(data, self.
-                                n_steps, greedy=False, T=1)
-                
-                # Compute reward and baseline
-                reward = self.baseline.compute_reward(actions, data)
-                baseline_reward = self.baseline.rollout(data, self.n_steps)
-                # print(f'Baseline reward: {baseline_reward}')
-                
-                advantage = reward - baseline_reward
-                
-                loss = -(log_p * advantage).mean()
-                # loss = -log_p.mean() * advantage
-                
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
-                
-                print(f'Epoch {epoch:<5}, Loss: {loss:<8.3f}, Reward: {reward:<10}, Baseline: {baseline_reward:<10}, Advantage: {advantage:<10}')
+        cost = rollout(actor, validation_loader, batch_size=len(validation_loader), n_nodes=steps)
+        cost = cost.mean()
+        costs.append(cost.item())
+
+        print('Problem:TSP''%s' % steps, '/ Average distance:', cost.item())
+        print(costs)
