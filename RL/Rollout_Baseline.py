@@ -25,15 +25,16 @@ class RolloutBaseline():
         self.n_steps = n_steps
         self.dataset = dataset
         self.T = T
-        self._update_model(model, epoch)
+        self._update_model(model, epoch, T)
         
-    def _update_model(self, model, epoch, dataset=None):
+    def _update_model(self, model, epoch, T):
         self.model = copy.deepcopy(model)
-        self.bl_vals = rollout(self.model, self.dataset, n_steps=self.n_steps).cpu().numpy()
+        self.bl_vals = rollout(self.model, self.dataset, n_steps=self.n_steps, T=T).cpu().numpy()
         self.mean = self.bl_vals.mean()
         self.epoch = epoch
 
     def eval(self, data, n_steps):
+        self.model.eval()
         with torch.no_grad():
             actions, log_p, depot_visits = self.model(data, n_steps, greedy=True, T=self.T)
             reward = compute_reward(actions, data)

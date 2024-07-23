@@ -17,7 +17,7 @@ def compute_reward(self, actions, data):
         
         # Check if the route starts and ends at the depot
         if route[0] != 0 or route[-1] != 0:
-            route_distance += 300  # penalty for not starting/ending at the depot
+            route_distance += 100  # penalty for not starting/ending at the depot
     
         
         for step in route:
@@ -32,7 +32,7 @@ def compute_reward(self, actions, data):
                 current_location = next_location
             
             if capacity_left < 0:
-                route_distance += 300  # penalty for exceeding capacity
+                route_distance += 100  # penalty for exceeding capacity
         
         total_distance += route_distance
     

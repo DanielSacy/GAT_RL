@@ -21,7 +21,8 @@ class InstanceGenerator:
 
         M = list(np.arange(1, self.n_vehicles + 1))  # Set of vehicles
 
-        load_capacity = 10000  # Load capacity per vehicle
+        load_capacity = 1000  # Load capacity per vehicle
+        # load_capacity = 10000  # For TSP simulation
 
         distance =  {(i,j):int(np.random.randint(50, self.max_distance, 25)[0]) for i,j in Arcs}
         # distance = {(i, j): 100 for i in N for j in N if i != j}  # Constant distance for simplicity

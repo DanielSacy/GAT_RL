@@ -3,8 +3,13 @@ import torch.optim as optim
 import numpy as np
 import os
 import time
+import logging
 from src_batch.RL.Compute_Reward import compute_reward
 from src_batch.RL.Rollout_Baseline import rollout
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 def adv_normalize(adv):
     std = adv.std()
@@ -12,31 +17,33 @@ def adv_normalize(adv):
     n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
     return n_advs
 
-def train(model, rol_baseline, data_loader, validation_loader, folder, lr, n_steps, num_epochs, T):
+def train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
     max_grad_norm = 2.0
     
-    actor = model #Model(3, 1, hidden_node_dim, hidden_edge_dim, 0.0, conv_layers, 8, torch.tensor([steps])).to(device)
-    rol_baseline = rol_baseline #RolloutBaseline(actor, validation_loader, n_nodes=steps)
+    actor = model
+    rol_baseline = rol_baseline
     
-    actor_optim = optim.Adam(actor.parameters(), lr=lr)
+    actor_optim = optim.Adam(actor.parameters(), lr)
 
     costs = []
     for epoch in range(num_epochs):
         print("epoch:", epoch, "------------------------------------------------")
         actor.train()
+        print("actor:", actor)
 
         times, losses, rewards = [], [], []
         epoch_start = time.time()
         start = epoch_start
 
         for batch_idx, data in enumerate(data_loader):
-            batch = batch.to(device)
-            tour_indices, tour_logp, depot_visits = actor(data, n_steps, greedy=False, T=T)
+            print("batch_idx:", batch_idx)
+            data = data.to(device)
+            print("data:", data)
+            actions, tour_logp, depot_visits = actor(data, n_steps, greedy=False, T=T)
 
-            reward = compute_reward(tour_indices.detach(), data)
-            base_reward = rol_baseline.eval(data, n_steps)
+            reward = compute_reward(actions, data)
+            base_reward = rol_baseline.eval(actions, data)
 
             advantage = (reward - base_reward)
             if not advantage.ne(0).any():
@@ -74,9 +81,10 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, lr, n_ste
         save_path = os.path.join(epoch_dir, 'actor.pt')
         torch.save(actor.state_dict(), save_path)
         
-        cost = rollout(actor, validation_loader, batch_size=len(validation_loader), n_nodes=steps)
+        cost = rollout(actor, validation_loader, batch_size=len(validation_loader), n_steps=n_steps, T=T)
         cost = cost.mean()
         costs.append(cost.item())
 
-        print('Problem:TSP''%s' % steps, '/ Average distance:', cost.item())
+        logging.info(f'Epoch {epoch}, cost: {cost.item()}')
+        # print('Problem:TSP''%s' % steps, '/ Average distance:', cost.item())
         print(costs)

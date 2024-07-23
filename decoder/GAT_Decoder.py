@@ -30,7 +30,7 @@ class GAT_Decoder(nn.Module):
         nn.init.xavier_uniform_(self.fc.weight.data)
         nn.init.xavier_uniform_(self.fc1.weight.data)
 
-    def forward(self, encoder_inputs, pool, capacity, demand, n_steps,T, greedy=True, depot_visits=0):
+    def forward(self, encoder_inputs, pool, capacity, demand, n_steps,T, greedy, depot_visits):
         
         device = encoder_inputs.device
 
@@ -56,13 +56,13 @@ class GAT_Decoder(nn.Module):
 
         log_ps = []
         actions = []
-        
-        # i=0
-        # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
-        for i in range(n_steps):
-            if not mask1[:, 1:].eq(0).any():
-                print('break')
-                break
+        count = 0
+        i=0
+        while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
+        # for i in range(n_steps):
+        #     if not mask1[:, 1:].eq(0).any():
+        #         print(f'Breaking at i={i}, mask1: {mask1}')
+        #         break
             if i == 0:   
                 _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
                 # print(f'_input: {_input}\n\n')
@@ -93,6 +93,7 @@ class GAT_Decoder(nn.Module):
             actions.append(index.data.unsqueeze(1))
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
+            # logging.debug(f'is_done: {is_done}')
             log_p = log_p * (1. - is_done)
 
             log_ps.append(log_p.unsqueeze(1))
@@ -104,9 +105,13 @@ class GAT_Decoder(nn.Module):
                                   encoder_inputs, 1,
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
                                   ).squeeze(1)
-            # i+=1
             
+            i+=1
+            # count += 1
+            # if count % 1000 == 0:
+            #     logging.debug(f'count: {count}')
         log_ps = torch.cat(log_ps, dim=1)
+        # logging.debug(f'actions: {actions}')
         actions = torch.cat(actions, dim=1)
 
         log_p = log_ps.sum(dim=1)

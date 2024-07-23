@@ -43,10 +43,10 @@ def run_model_on_data(filename, batch_size=1):
     greedy = True
     T = 2.0 # Temperature for softmax based on Kun et al. (2021)
     
-    model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity)
+    model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity, T)
     model = model.to(device)
     
-    n_steps = 9 # Number of steps for the decoder
+    n_steps = 30 # Number of steps for the decoder
     
     all_actions = []
     all_log_p = []
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     start = time()
     actions, log_p, depot_visits, all_actions, all_log_p = run_model_on_data(filename, batch_size=batch_size)
 
-    # print(f'Actions: {actions}')
+    print(f'Actions: {actions}')
     # print(f'Log probability: {log_p}')
     print(f'Depot visits: {depot_visits}')
     print('All actions:\n' + '\n'.join([f'{action}\n' for action in all_actions]))
