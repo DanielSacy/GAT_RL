@@ -20,7 +20,7 @@ def main_train():
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 10
+    batch_size = 2
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
@@ -39,16 +39,18 @@ def main_train():
     n_steps = 100
     lr = 1e-4
     # greedy = False
-    T = 1.0 #2.5
+    T = 2.5 #1.0
     # Define hyperparameters
     num_epochs = 1
+    n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline
     model = Model(node_input_dim, edge_input_dim, hidden_dim, dropout, layers, heads, capacity, T).to(device)
-    rol_baseline = RolloutBaseline(model, data_loader, n_steps, T, epoch=0).to(device)
+    rol_baseline = RolloutBaseline(model, n_rollouts)
+    # rol_baseline = RolloutBaseline(model, data_loader, n_steps, T, epoch=0).to(device)
     
     # Call the train function
-    train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T).to(device)
+    train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T)
 
 if __name__ == "__main__":
     main_train()
