@@ -52,14 +52,22 @@ class PointerAttention(nn.Module):
         x = self.mhalayer(state_t, context, mask)
 
         batch_size, n_nodes, input_dim = context.size()
+        print(f'batch_size: {batch_size}, n_nodes: {n_nodes}, input_dim: {input_dim}')
         Q = x.view(batch_size, 1, -1)
         K = self.k(context).view(batch_size, n_nodes, -1)
         compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # (batch_size,1,n_nodes)
+        print(f'compatibility: {compatibility}')
         compatibility = compatibility.squeeze(1)
+        print(f'compatibility 2: {compatibility}')
         x = torch.tanh(compatibility)
+        print(f'x TANH: {x}')
         x = x * (10)
         print(f'x1: {x}')
-        x = x.masked_fill(mask.bool(), float(1e-5))#"-inf"))#
+        # min_value = torch.finfo(x.dtype).min
+        min_value = 1e-15
+        print(f'min_value type: {type(min_value)}')
+        # x = x.masked_fill(mask.bool(), min_value)
+        x = x.masked_fill(mask.bool(), float("-inf"))
         print(f'x2: {x}')
         
         # Compute the softmax scores

@@ -17,6 +17,8 @@ class Model(nn.Module):
     def forward(self, data,  n_steps, greedy, T):
         x = self.encoder(data)  # Shape of x: (n_nodes, hidden_dim) 
         
+        print(f'x IN MODEL: {x}')
+        
         batch_size = data.batch.max().item() + 1
         num_nodes_per_graph = data.num_nodes // batch_size
         

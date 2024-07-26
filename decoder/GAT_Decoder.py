@@ -76,6 +76,8 @@ class GAT_Decoder(nn.Module):
             # If it's the first step, update the mask
             if i == 0:
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            
+            
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
             
             # # Check for NaN values in p
@@ -84,7 +86,17 @@ class GAT_Decoder(nn.Module):
             #     p = torch.nan_to_num(p, 0.1)
 
             # Calculate the probability distribution for sampling
-            dist = Categorical(p)
+            try:
+                dist = Categorical(p)
+            except RuntimeError as e:
+                e = str(e)
+            finally:
+                print(f'\n\ndecoder_input: {decoder_input}')
+                print(f'encoder_inputs: {encoder_inputs}')
+                print(f'mask: {mask}')
+                print(f'T: {T}\n\n')
+                
+            # dist = Categorical(p)
             if greedy:
                 _, index = p.max(dim=-1)
             else:

@@ -15,7 +15,8 @@ def main_train():
     filename = 'actor.pt'
 
     # Create dataset
-    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
+    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20.CSV'
+    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
     
     # Create dataloaders
@@ -36,12 +37,12 @@ def main_train():
     layers = 2
     heads = 8
     capacity = data_loader.dataset[0].capacity
-    n_steps = 100
+    n_steps = 1
     lr = 1e-4
     # greedy = False
     T = 2.5 #1.0
     # Define hyperparameters
-    num_epochs = 1
+    num_epochs = 5
     n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline

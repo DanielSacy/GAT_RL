@@ -34,19 +34,34 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         """
         This function initializes the parameters of the encoder.
         """
-        torch.nn.init.xavier_uniform_(self.fc_node.weight.data)
-        torch.nn.init.xavier_uniform_(self.fc_edge.weight.data)
-        torch.nn.init.xavier_uniform_(self.fc_out.weight.data)
+        # torch.nn.init.xavier_uniform_(self.fc_node.weight.data)
+        # torch.nn.init.xavier_uniform_(self.fc_edge.weight.data)
+        # torch.nn.init.xavier_uniform_(self.fc_out.weight.data)
+        torch.nn.init.xavier_uniform_(self.fc_node.weight)
+        torch.nn.init.xavier_uniform_(self.fc_edge.weight)
+        torch.nn.init.xavier_uniform_(self.fc_out.weight)
+        torch.nn.init.constant_(self.fc_node.bias, 0)
+        torch.nn.init.constant_(self.fc_edge.bias, 0)
+        torch.nn.init.constant_(self.fc_out.bias, 0)
             
         
     def forward(self, data):
         """This function computes the node, edge, and graph embeddings."""
+        print(f'data: {data}')
+        print(f'data: {data.x}')
         # x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        print(f'x depois den entrar no forward: {x}')
 
         # Node and edge embedding
-        x = self.bn_node(self.fc_node(x))
+        x = self.fc_node(x)
+        print(f'x depois de passar pelo fc_node: {x}')
+        x = self.bn_node(x)
+        print(f'x depois de passar pelo bn_node: {x}')
+        # x = self.bn_node(self.fc_node(x))
         edge_attr = self.bn_edge(self.fc_edge(edge_attr))
+        
+        print(f'x IN ENCODER: {x}')
         
         # Test later if applying a relu here is going to improve the performance
         # x = F.relu(self.bn_node(self.fc_node(x)))
@@ -58,10 +73,14 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
             x = edge_gat_conv(x, edge_index, edge_attr)
             # x = F.elu(x) # Test later if this is necessary
             x = x + x_residual
+            
+        print(f'x AFTER GAT CONV: {x}')
         
         # Apply a linear layer to the output to return it to the original dimension        
         x = self.fc_out(x)
         
+        print(f'x AFTER FC_OUT: {x}')
+                
         # Compute graph-level embedding by averaging all node embeddings
         # graph_embedding = torch_geometric.nn.global_mean_pool(x, batch)
 

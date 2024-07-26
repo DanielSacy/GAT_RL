@@ -1,3 +1,4 @@
+from ast import Param
 import torch
 import torch.optim as optim
 import numpy as np
@@ -13,13 +14,13 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt='%Y-%m-%d %H:%M:%S')
 
 def adv_normalize(adv):
-    std = adv.std()
-    assert std != 0. and not torch.isnan(std), 'Need nonzero std'
+    # std = adv.std()
+    # assert std != 0. and not torch.isnan(std), 'Need nonzero std'
     n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
     return n_advs
 
 def train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T):
-    max_grad_norm = 2.0
+    max_grad_norm = 1.0
     
     actor = model
     actor.train()
@@ -33,16 +34,19 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
         times, losses, rewards = [], [], []
         epoch_start = time.time()
         start = epoch_start
-        
-        for data in data_loader:
-            data = data.to(device)
+        datacount = 0
+        for batch in data_loader:
+            datacount += 1
+            print(f'\n\nDATACOUNT: {datacount}\n\n')
+            print(f'batch: {batch.x}')
+            batch = batch.to(device)
             
             # Actor forward pass
-            actions, tour_logp, depot_visits = actor(data, n_steps, greedy=False, T=T)
+            actions, tour_logp, depot_visits = actor(batch, n_steps, greedy=False, T=T)
 
             # Compute reward
-            reward = compute_reward(actions, data)
-            bl_reward = rollout.rollout(data, n_steps)
+            reward = compute_reward(actions, batch)
+            bl_reward = rollout.rollout(batch, n_steps)
             
             # Compute advantage
             advantage = (reward - bl_reward)
@@ -52,14 +56,11 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             # Whiten advantage    
             advantage = adv_normalize(advantage)
             reinforce_loss = (advantage.detach() * tour_logp).mean()
-            # reinforce_loss = torch.mean(advantage.detach() * tour_logp)
-            
-            # erro = ERRO+TRAVADOR
             
             # Backward pass
             actor_optim.zero_grad()
             reinforce_loss.backward()
-            # torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm)
+            torch.nn.utils.clip_grad_value_(actor.parameters(), max_grad_norm)
             actor_optim.step()
 
             rewards.append(torch.mean(reward.detach()).item())
