@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, BatchNorm1d as BatchNorm, Sequential, ReLU
 import torch_geometric
-from src_batch.encoder.EdgeGATConv import EdgeGATConv
+from encoder.EdgeGATConv import EdgeGATConv
 
 
 # Encoder that includes batch normalization and a residual connection around the custom GAT layer.

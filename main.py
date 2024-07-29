@@ -1,7 +1,8 @@
 import logging
 import torch
-from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
-from src_batch.model.Model import Model
+from pathlib import Path
+from instance_creator.InstanceGenerator import InstanceGenerator
+from model.Model import Model
 from time import time
 
 def run_model_on_data(filename, batch_size=1):
@@ -63,7 +64,8 @@ def run_model_on_data(filename, batch_size=1):
     return actions, log_p, depot_visits, all_actions, all_log_p
 
 if __name__ == "__main__":
-    filename = 'instance_creator\instance_data.csv'
+    main_root = Path(__file__).parent.resolve()
+    filename = Path(main_root).joinpath('instance_creator').joinpath('instance_data.csv').resolve()
     # instance_id = '10_1'
     batch_size = 10
     

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from src_batch.decoder.TransformerAttention import TransformerAttention
+from decoder.TransformerAttention import TransformerAttention
 
 class PointerAttention(nn.Module):
     """

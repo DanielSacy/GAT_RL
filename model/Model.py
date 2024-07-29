@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from src_batch.encoder.GAT_Encoder import ResidualEdgeGATEncoder
-from src_batch.decoder.GAT_Decoder import GAT_Decoder
+from encoder.GAT_Encoder import ResidualEdgeGATEncoder
+from decoder.GAT_Decoder import GAT_Decoder
 
 
 class Model(nn.Module):

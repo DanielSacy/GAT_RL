@@ -2,8 +2,8 @@ import logging
 import torch
 from torch import nn
 from torch.distributions import Categorical
-from src_batch.decoder.PointerAttention import PointerAttention
-from src_batch.decoder.mask_capacity import update_state, update_mask
+from decoder.PointerAttention import PointerAttention
+from decoder.mask_capacity import update_state, update_mask
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
