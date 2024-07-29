@@ -47,21 +47,13 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         
     def forward(self, data):
         """This function computes the node, edge, and graph embeddings."""
-        print(f'data: {data}')
-        print(f'data: {data.x}')
         # x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
-        print(f'x depois den entrar no forward: {x}')
 
         # Node and edge embedding
-        x = self.fc_node(x)
-        print(f'x depois de passar pelo fc_node: {x}')
-        x = self.bn_node(x)
-        print(f'x depois de passar pelo bn_node: {x}')
-        # x = self.bn_node(self.fc_node(x))
+        x = self.bn_node(self.fc_node(x))
         edge_attr = self.bn_edge(self.fc_edge(edge_attr))
         
-        print(f'x IN ENCODER: {x}')
         
         # Test later if applying a relu here is going to improve the performance
         # x = F.relu(self.bn_node(self.fc_node(x)))
@@ -74,13 +66,9 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
             # x = F.elu(x) # Test later if this is necessary
             x = x + x_residual
             
-        print(f'x AFTER GAT CONV: {x}')
-        
         # Apply a linear layer to the output to return it to the original dimension        
         x = self.fc_out(x)
         
-        print(f'x AFTER FC_OUT: {x}')
-                
         # Compute graph-level embedding by averaging all node embeddings
         # graph_embedding = torch_geometric.nn.global_mean_pool(x, batch)
 

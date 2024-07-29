@@ -34,11 +34,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
         times, losses, rewards = [], [], []
         epoch_start = time.time()
         start = epoch_start
-        datacount = 0
         for batch in data_loader:
-            datacount += 1
-            print(f'\n\nDATACOUNT: {datacount}\n\n')
-            print(f'batch: {batch.x}')
             batch = batch.to(device)
             
             # Actor forward pass
@@ -53,19 +49,26 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             if not advantage.ne(0).any():
                 print("advantage==0.")
             
+            # print("reward:", reward)
+            # print("bl_reward:", bl_reward)
+            # print("advantage:", advantage)
+            # print("tour_logp:", tour_logp)        
+            
             # Whiten advantage    
             advantage = adv_normalize(advantage)
             reinforce_loss = (advantage.detach() * tour_logp).mean()
             
+            # print("advantage normalized:", advantage)
+            # print("reinforce_loss:", reinforce_loss)            
+
             # Backward pass
             actor_optim.zero_grad()
             reinforce_loss.backward()
-            torch.nn.utils.clip_grad_value_(actor.parameters(), max_grad_norm)
+            # torch.nn.utils.clip_grad_value_(actor.parameters(), max_grad_norm)
             actor_optim.step()
 
             rewards.append(torch.mean(reward.detach()).item())
             losses.append(torch.mean(reinforce_loss.detach()).item())
-            logging.debug(f'epoch {epoch}, loss: {losses[-1]}, reward: {rewards[-1]}')
 
         # Print epoch statistics
         end = time.time()
@@ -75,7 +78,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
         mean_loss = np.mean(losses[epoch])
         mean_reward = np.mean(rewards[epoch])
 
-        print(f'Epoch {epoch}, mean loss: {mean_loss}, mean reward: {mean_reward}, time: {times[epoch]}')
+        print(f'Epoch {epoch}, mean loss: {mean_loss}, mean reward: {mean_reward}, time: {times}')
 
         # rol_baseline.epoch_callback(actor, epoch)
 

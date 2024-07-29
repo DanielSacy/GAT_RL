@@ -47,13 +47,6 @@ class GAT_Decoder(nn.Module):
 
         index = torch.zeros(batch_size, dtype=torch.long, device=device)
         
-        # Debugging log
-        # logging.debug(f'encoder_inputs: {encoder_inputs.shape}')
-        # logging.debug(f'batch_size: {batch_size}')
-        # logging.debug(f'seq_len: {seq_len}')
-        # logging.debug(f'dynamic_capacity: {dynamic_capacity}')
-        # logging.debug(f'demands: {demands.shape}')
-
         log_ps = []
         actions = []
         count = 0
@@ -79,24 +72,19 @@ class GAT_Decoder(nn.Module):
             
             
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
-            
-            # # Check for NaN values in p
-            # if torch.isnan(p).any():
-            # #     # logging.warning("NaN values found in p. Replacing with zeroes.")
-            #     p = torch.nan_to_num(p, 0.1)
 
-            # Calculate the probability distribution for sampling
-            try:
-                dist = Categorical(p)
-            except RuntimeError as e:
-                e = str(e)
-            finally:
-                print(f'\n\ndecoder_input: {decoder_input}')
-                print(f'encoder_inputs: {encoder_inputs}')
-                print(f'mask: {mask}')
-                print(f'T: {T}\n\n')
+            # try:
+            #     dist = Categorical(p)
+            # except RuntimeError as e:
+            #     e = str(e)
+            # finally:
+            #     print(f'\n\ndecoder_input: {decoder_input}')
+            #     print(f'encoder_inputs: {encoder_inputs}')
+            #     print(f'mask: {mask}')
+            #     print(f'T: {T}\n\n')
                 
-            # dist = Categorical(p)
+            # Calculate the probability distribution for sampling
+            dist = Categorical(p)
             if greedy:
                 _, index = p.max(dim=-1)
             else:
@@ -119,11 +107,8 @@ class GAT_Decoder(nn.Module):
                                   ).squeeze(1)
             
             i+=1
-            # count += 1
-            # if count % 1000 == 0:
-            #     logging.debug(f'count: {count}')
+
         log_ps = torch.cat(log_ps, dim=1)
-        # logging.debug(f'actions: {actions}')
         actions = torch.cat(actions, dim=1)
 
         log_p = log_ps.sum(dim=1)

@@ -15,13 +15,13 @@ def main_train():
     filename = 'actor.pt'
 
     # Create dataset
-    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20.CSV'
-    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
+    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20nodes_1000.CSV'
+    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 2
+    batch_size = 10
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
