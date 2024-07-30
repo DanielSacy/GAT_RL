@@ -56,7 +56,7 @@ def compute_reward(actions, data):
                 route_distance += 100  # penalty for exceeding capacity
         
         # total_distance += route_distance
-        rewards.append(-route_distance)
+        rewards.append(route_distance)
     
     # reward = -total_distance
     

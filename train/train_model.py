@@ -7,11 +7,14 @@ import time
 import logging
 from src_batch.RL.Compute_Reward import compute_reward
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+logging.info(f"Running on device: {device}")
+
 
 def adv_normalize(adv):
     # std = adv.std()
@@ -20,7 +23,7 @@ def adv_normalize(adv):
     return n_advs
 
 def train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T):
-    max_grad_norm = 1.0
+    # max_grad_norm = 1.0
     
     actor = model
     actor.train()
@@ -43,11 +46,12 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             # Compute reward
             reward = compute_reward(actions, batch)
             bl_reward = rollout.rollout(batch, n_steps)
-            
+                     
             # Compute advantage
             advantage = (reward - bl_reward)
             if not advantage.ne(0).any():
                 print("advantage==0.")
+                
             
             # print("reward:", reward)
             # print("bl_reward:", bl_reward)
@@ -56,7 +60,8 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             
             # Whiten advantage    
             advantage = adv_normalize(advantage)
-            reinforce_loss = (advantage.detach() * tour_logp).mean()
+            # print("advantage normalized:", advantage)
+            reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             
             # print("advantage normalized:", advantage)
             # print("reinforce_loss:", reinforce_loss)            
@@ -75,8 +80,10 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
         times.append(end - start)
         start = end
 
-        mean_loss = np.mean(losses[epoch])
-        mean_reward = np.mean(rewards[epoch])
+        mean_loss = np.mean(losses)
+        mean_reward = np.mean(rewards)
+        # mean_loss = np.mean(losses[epoch])
+        # mean_reward = np.mean(rewards[epoch])
 
         print(f'Epoch {epoch}, mean loss: {mean_loss}, mean reward: {mean_reward}, time: {times}')
 

@@ -1,12 +1,20 @@
 import torch
 import os
+import logging
 
 from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
 from src_batch.model.Model import Model
 from src_batch.RL.Rollout_Baseline import RolloutBaseline
 from src_batch.train.train_model import train
 
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+logging.info(f"Running on device: {device}")
 
 def main_train():
     
@@ -15,13 +23,13 @@ def main_train():
     filename = 'actor.pt'
 
     # Create dataset
-    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20nodes_1000.CSV'
-    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
+    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20nodes_1000.CSV'
+    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_100.CSV'
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 10
+    batch_size = 100
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
@@ -42,7 +50,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
     # Define hyperparameters
-    num_epochs = 5
+    num_epochs = 100
     n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline
