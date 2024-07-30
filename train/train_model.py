@@ -43,7 +43,8 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             # Actor forward pass
             actions, tour_logp, depot_visits = actor(batch, n_steps, greedy=False, T=T)
 
-            # Compute reward
+            
+            # Compute reward and baseline
             reward = compute_reward(actions, batch)
             bl_reward = rollout.rollout(batch, n_steps)
                      
@@ -51,12 +52,6 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             advantage = (reward - bl_reward)
             if not advantage.ne(0).any():
                 print("advantage==0.")
-                
-            
-            # print("reward:", reward)
-            # print("bl_reward:", bl_reward)
-            # print("advantage:", advantage)
-            # print("tour_logp:", tour_logp)        
             
             # Whiten advantage    
             advantage = adv_normalize(advantage)

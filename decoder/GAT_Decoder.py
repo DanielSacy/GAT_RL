@@ -49,9 +49,10 @@ class GAT_Decoder(nn.Module):
         
         log_ps = []
         actions = []
-        count = 0
+
         i=0
         while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
+            print(f'i: {i}')
         # for i in range(n_steps):
         #     if not mask1[:, 1:].eq(0).any():
         #         print(f'Breaking at i={i}, mask1: {mask1}')
@@ -67,8 +68,8 @@ class GAT_Decoder(nn.Module):
             decoder_input = decoder_input + pool
             
             # If it's the first step, update the mask
-            if i == 0:
-                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            # if i == 0:
+            #     mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             
             
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
@@ -90,7 +91,7 @@ class GAT_Decoder(nn.Module):
             else:
                 index = dist.sample()
                 
-            actions.append(index.data.unsqueeze(1))
+            actions.append(index.data.unsqueeze(1))            
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
             # logging.debug(f'is_done: {is_done}')
@@ -98,7 +99,8 @@ class GAT_Decoder(nn.Module):
 
             log_ps.append(log_p.unsqueeze(1))
 
-            dynamic_capacity, depot_visits = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item(), depot_visits)
+            # dynamic_capacity, depot_visits = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item(), depot_visits)
+            dynamic_capacity = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item())
             mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             
             _input = torch.gather(
@@ -108,9 +110,11 @@ class GAT_Decoder(nn.Module):
             
             i+=1
 
+        #Insert the depot node at the end of the route
+        actions.append(torch.zeros(batch_size, 1, dtype=torch.long, device=device))
+
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
-
         log_p = log_ps.sum(dim=1)
 
         return actions, log_p, depot_visits

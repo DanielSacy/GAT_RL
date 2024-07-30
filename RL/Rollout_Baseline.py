@@ -17,5 +17,6 @@ class RolloutBaseline:
         bl_rewards = compute_reward(actions, data)
         # bl_rewards.append(bl_reward)
         # print("bl_rewards:", bl_rewards)
+        # print(f'actions rollouts: {actions}')
         
         return bl_rewards

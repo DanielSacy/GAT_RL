@@ -12,6 +12,8 @@ def get_edge_distance(edge_index, edge_attr, current_location, next_location):
     """
     for i, (from_node, to_node) in enumerate(edge_index):
         if from_node == current_location and to_node == next_location:
+            # print(f'Edge from {from_node} to {to_node}, distance: {edge_attr[i].item()}\n')
+
             return edge_attr[i].item()
     return 0  # Shouldn't reach here if the graph is fully connected
 
@@ -37,9 +39,11 @@ def compute_reward(actions, data):
         capacity_left = data.capacity[b].item()
         
         # Check if the route starts and ends at the depot
-        if route[0] != 0 or route[-1] != 0:
-            route_distance += 200  # penalty for not starting/ending at the depot
+        if route[0] != 0:
+            route_distance += 1000  # penalty for not starting/ending at the depot
     
+        if route[-1] != 0:
+            route_distance += 1000  # penalty for not starting/ending at the depot
         
         for step in route:
             next_location = step.item()
@@ -53,7 +57,7 @@ def compute_reward(actions, data):
                 current_location = next_location
             
             if capacity_left < 0:
-                route_distance += 100  # penalty for exceeding capacity
+                route_distance += 500  # penalty for exceeding capacity
         
         # total_distance += route_distance
         rewards.append(route_distance)
