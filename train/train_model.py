@@ -42,7 +42,6 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             
             # Actor forward pass
             actions, tour_logp, depot_visits = actor(batch, n_steps, greedy=False, T=T)
-
             
             # Compute reward and baseline
             reward = compute_reward(actions, batch)
@@ -55,7 +54,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             
             # Whiten advantage    
             advantage = adv_normalize(advantage)
-            # print("advantage normalized:", advantage)
+            print("advantage normalized:", advantage)
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             
             # print("advantage normalized:", advantage)

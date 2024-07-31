@@ -27,8 +27,11 @@ class GAT_Decoder(nn.Module):
         This function initializes the parameters of the attention layer.
         It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
         """
-        nn.init.xavier_uniform_(self.fc.weight.data)
-        nn.init.xavier_uniform_(self.fc1.weight.data)
+        nn.init.xavier_uniform_(self.fc.weight)
+        nn.init.xavier_uniform_(self.fc1.weight)
+        # nn.init.xavier_uniform_(self.fc.weight.data)
+        # nn.init.xavier_uniform_(self.fc1.weight.data)
+        # May take off data from the above lines
 
     def forward(self, encoder_inputs, pool, capacity, demand, n_steps,T, greedy, depot_visits):
         
@@ -52,7 +55,6 @@ class GAT_Decoder(nn.Module):
 
         i=0
         while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
-            print(f'i: {i}')
         # for i in range(n_steps):
         #     if not mask1[:, 1:].eq(0).any():
         #         print(f'Breaking at i={i}, mask1: {mask1}')
@@ -67,9 +69,9 @@ class GAT_Decoder(nn.Module):
             pool = self.fc1(pool.to(device))
             decoder_input = decoder_input + pool
             
-            # If it's the first step, update the mask
-            # if i == 0:
-            #     mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            # If it is the first step, update the mask to avoid visiting the depot again
+            if i == 0:
+                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             
             
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
@@ -86,10 +88,13 @@ class GAT_Decoder(nn.Module):
                 
             # Calculate the probability distribution for sampling
             dist = Categorical(p)
-            if greedy:
-                _, index = p.max(dim=-1)
+            if i == 0:
+                index = torch.zeros(batch_size, dtype=torch.long, device=device)
             else:
-                index = dist.sample()
+                if greedy:
+                    _, index = p.max(dim=-1)
+                else:
+                    index = dist.sample()
                 
             actions.append(index.data.unsqueeze(1))            
             log_p = dist.log_prob(index)
@@ -110,9 +115,10 @@ class GAT_Decoder(nn.Module):
             
             i+=1
 
-        #Insert the depot node at the end of the route
-        actions.append(torch.zeros(batch_size, 1, dtype=torch.long, device=device))
+        # Insert the depot at the end of the route
+        actions.append(torch.zeros(batch_size, 1, dtype=torch.long, device=device)) 
 
+        # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
         log_p = log_ps.sum(dim=1)
