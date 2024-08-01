@@ -1,27 +1,40 @@
 import logging
+from typing import Tuple
 import torch
 from torch import nn
 from torch.distributions import Categorical
 from src_batch.decoder.PointerAttention import PointerAttention
 from src_batch.decoder.mask_capacity import update_state, update_mask
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-    
+logger = logging.getLogger(__name__)
+
+
 class GAT_Decoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
+    """
+    A decoder for the GAT model.
+
+    Args:
+        input_dim (int): The dimensionality of the input data.
+        hidden_dim (int): The dimensionality of the hidden state.
+    """
+
+    def __init__(self, input_dim: int, hidden_dim: int) -> None:
         super(GAT_Decoder, self).__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
+        # Initialize the pointer attention layer
 
         self.pointer = PointerAttention(8, input_dim, hidden_dim)
+        # Initialize the fully connected layers
 
-        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False) # +1 to adjust for the concatenated capacity in line 52
+        self.fc = nn.Linear(
+            hidden_dim + 1, hidden_dim, bias=False
+        )  # +1 to adjust for the concatenated capacity in line 52
         self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        # Initialize the model parameters
 
         self.reset_parameters()
-        
+
     def reset_parameters(self):
         """
         This function initializes the parameters of the attention layer.
@@ -33,33 +46,71 @@ class GAT_Decoder(nn.Module):
         # nn.init.xavier_uniform_(self.fc1.weight.data)
         # May take off data from the above lines
 
-    def forward(self, encoder_inputs, pool, capacity, demand, n_steps,T, greedy, depot_visits):
-        
-        device = encoder_inputs.device
+    def forward(
+        self,
+        encoder_inputs: torch.Tensor,
+        pool: torch.Tensor,
+        capacity: torch.Tensor,
+        demand: torch.Tensor,
+        n_steps: int,
+        T: float,
+        greedy: bool,
+        depot_visits: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        The forward pass of the decoder.
 
-        batch_size = encoder_inputs.size(0)  # Indicates the number of graphs in the batch
-        seq_len = encoder_inputs.size(1)    # Feature dimension
-        
+        Args:
+            encoder_inputs (torch.Tensor): The input data from the encoder.
+            pool (torch.Tensor): The pooled output from the encoder.
+            capacity (torch.Tensor): The capacity of the vehicle.
+            demand (torch.Tensor): The demand at each location.
+            n_steps (int): The number of steps in the sequence.
+            T (float): A temperature parameter for the softmax function.
+            greedy (bool): Whether to use a greedy or non-greedy policy.
+            depot_visits (torch.Tensor): The number of visits to the depot.
+
+        Returns:
+            actions (torch.Tensor): The sequence of actions taken by the decoder.
+            log_p (torch.Tensor): The log probability of the sequence.
+            depot_visits (torch.Tensor): The updated number of visits to the depot.
+        """
+        # Get the device of the input data
+
+        device = encoder_inputs.device
+        # Get the batch size and sequence length from the input data
+
+        batch_size = encoder_inputs.size(
+            0
+        )  # Indicates the number of graphs in the batch
+        seq_len = encoder_inputs.size(1)  # Feature dimension
+
         # n_steps = seq_len +1 # To account for the route starting and ending at the depot
+        # Initialize the masks for the input data
 
         mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
         mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+        # Expand the capacity and demand tensors to match the batch size
 
         dynamic_capacity = capacity.expand(batch_size, -1).to(device)
         demands = demand.to(device)
+        # Initialize the index tensor for the greedy policy
 
         index = torch.zeros(batch_size, dtype=torch.long, device=device)
-        
+        # Initialize the log probability tensor
+
         log_ps = []
+        # Initialize the actions tensor
+
         actions = []
 
-        i=0
+        i = 0
         while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
-        # for i in range(n_steps):
-        #     if not mask1[:, 1:].eq(0).any():
-        #         print(f'Breaking at i={i}, mask1: {mask1}')
-        #         break
-            if i == 0:   
+            # for i in range(n_steps):
+            #     if not mask1[:, 1:].eq(0).any():
+            #         print(f'Breaking at i={i}, mask1: {mask1}')
+            #         break
+            if i == 0:
                 _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
                 # print(f'_input: {_input}\n\n')
 
@@ -68,13 +119,17 @@ class GAT_Decoder(nn.Module):
             decoder_input = self.fc(decoder_input)
             pool = self.fc1(pool.to(device))
             decoder_input = decoder_input + pool
-            
+
             # If it is the first step, update the mask to avoid visiting the depot again
+            # Update the mask to avoid visiting the depot again
+
             if i == 0:
-                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
-            
-            
-            p = self.pointer(decoder_input, encoder_inputs, mask,T)
+                mask, mask1 = update_mask(
+                    demands, dynamic_capacity, index.unsqueeze(-1), mask1, i
+                )
+            # Calculate the probability distribution for sampling
+
+            p = self.pointer(decoder_input, encoder_inputs, mask, T)
 
             # try:
             #     dist = Categorical(p)
@@ -85,7 +140,7 @@ class GAT_Decoder(nn.Module):
             #     print(f'encoder_inputs: {encoder_inputs}')
             #     print(f'mask: {mask}')
             #     print(f'T: {T}\n\n')
-                
+
             # Calculate the probability distribution for sampling
             dist = Categorical(p)
             if i == 0:
@@ -95,28 +150,35 @@ class GAT_Decoder(nn.Module):
                     _, index = p.max(dim=-1)
                 else:
                     index = dist.sample()
-                
-            actions.append(index.data.unsqueeze(1))            
+
+            actions.append(index.data.unsqueeze(1))
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
             # logging.debug(f'is_done: {is_done}')
-            log_p = log_p * (1. - is_done)
+            log_p = log_p * (1.0 - is_done)
 
             log_ps.append(log_p.unsqueeze(1))
 
             # dynamic_capacity, depot_visits = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item(), depot_visits)
-            dynamic_capacity = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item())
-            mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
-            
+            dynamic_capacity = update_state(
+                demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item()
+            )
+            mask, mask1 = update_mask(
+                demands, dynamic_capacity, index.unsqueeze(-1), mask1, i
+            )
+
             _input = torch.gather(
-                                  encoder_inputs, 1,
-                                  index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
-                                  ).squeeze(1)
-            
-            i+=1
+                encoder_inputs,
+                1,
+                index.unsqueeze(-1)
+                .unsqueeze(-1)
+                .expand(encoder_inputs.size(0), -1, encoder_inputs.size(2)),
+            ).squeeze(1)
+
+            i += 1
 
         # Insert the depot at the end of the route
-        actions.append(torch.zeros(batch_size, 1, dtype=torch.long, device=device)) 
+        actions.append(torch.zeros(batch_size, 1, dtype=torch.long, device=device))
 
         # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)
