@@ -12,6 +12,8 @@ def get_edge_distance(edge_index, edge_attr, current_location, next_location):
     """
     for i, (from_node, to_node) in enumerate(edge_index):
         if from_node == current_location and to_node == next_location:
+            if current_location == next_location:
+                return 0
             # print(f'Edge from {from_node} to {to_node}, distance: {edge_attr[i].item()}\n')
             return edge_attr[i].item()
     return 0  # Shouldn't reach here if the graph is fully connected

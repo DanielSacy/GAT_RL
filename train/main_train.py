@@ -51,7 +51,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
     # Define hyperparameters
-    num_epochs = 2
+    num_epochs = 100
     n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline

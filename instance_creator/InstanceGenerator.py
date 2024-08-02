@@ -1,4 +1,7 @@
 import numpy as np
+from scipy.sparse.csgraph import minimum_spanning_tree as mst
+from scipy.sparse.csgraph import depth_first_order
+from scipy.sparse import csr_matrix
 import pandas as pd
 import torch
 from torch_geometric.loader import DataLoader
@@ -10,6 +13,15 @@ class InstanceGenerator:
         self.n_vehicles = n_vehicles
         self.max_demand = max_demand
         self.max_distance = max_distance
+    
+        
+    def compute_mst_route_value(route, distance):
+        total_value = 0
+        for i in range(len(route) - 1):
+            total_value += distance[route[i], route[i + 1]]
+        # Add the return to the depot
+        total_value += distance[route[-1], route[0]]
+        return total_value
 
     def instanSacy(self):
         No = set(np.arange(1, self.n_customers + 1))  # Set of customers
@@ -27,7 +39,17 @@ class InstanceGenerator:
         distance =  {(i,j):int(np.random.randint(50, self.max_distance, 25)[0]) for i,j in Arcs}
         # distance = {(i, j): 100 for i in N for j in N if i != j}  # Constant distance for simplicity
         
-        return No, N, M, demand, load_capacity, distance
+         # Compute the distance matrix for MST computation
+        distance_matrix = np.zeros((len(N), len(N)))
+        for (i, j), dist in distance.items():
+            distance_matrix[i][j] = dist
+        
+        # Compute the minimum spanning tree (MST) for baseline route
+        mst_bl = mst(csr_matrix(distance_matrix)).toarray().astype(int)
+        mst_baseline_route = (depth_first_order(mst_bl, i_start=0, directed=False, return_predecessors=False))
+        mst_baseline_value = compute_mst_route_value(mst_baseline_route, distance)
+        
+        return No, N, M, demand, load_capacity, distance, mst_baseline_route, mst_baseline_value
 
     def instance_to_data(self):
         No, N, M, demand, load_capacity, distance = self.instanSacy()

@@ -48,7 +48,7 @@ def main():
     layers = 2
     heads = 4
     n_steps = 1
-    greedy = True
+    greedy = False
     T = 2.5 # Temperature for softmax based on Kun et al. (2021)
     batch_size = 10
 

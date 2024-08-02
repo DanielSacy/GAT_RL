@@ -48,18 +48,18 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             bl_reward = rollout.rollout(batch, n_steps)
                      
             # Compute advantage
-            advantage = (reward - bl_reward)
+            advantage = (reward.detach() - bl_reward.detach())
             if not advantage.ne(0).any():
                 print("advantage==0.")
             
             # Whiten advantage    
             advantage = adv_normalize(advantage)
             print("advantage normalized:", advantage)
-            reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             
-            # print("advantage normalized:", advantage)
-            # print("reinforce_loss:", reinforce_loss)            
-
+            # Com Arvore Geradora Minima a vantagem será sempre negativa
+            reinforce_loss = (advantage.detach() * tour_logp).mean()
+            # reinforce_loss = torch.mean(advantage.detach() * tour_logp)
+            
             # Backward pass
             actor_optim.zero_grad()
             reinforce_loss.backward()
