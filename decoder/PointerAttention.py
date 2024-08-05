@@ -52,18 +52,16 @@ class PointerAttention(nn.Module):
         # Compute the compatibility scores
         compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # Size: (batch_size, 1, n_nodes)
         compatibility = compatibility.squeeze(1)
-        print(f'compatibility: {compatibility}')
         # Non-linear transformation
         x = torch.tanh(compatibility)
-        print(f'x tanh: {x}')
+        
         # Scaling the values to avoid numerical instability
         x = x * (10)
-        print(f'x scaled: {x}')
         
         # Apply the mask
         x = x.masked_fill(mask.bool(), float("-inf"))
-        print(f'x masked: {x}')
+        
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
-        print(f'scores: {scores}')
+        print(f'scores: {scores}\n')
         return scores

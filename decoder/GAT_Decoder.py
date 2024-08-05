@@ -55,9 +55,7 @@ class GAT_Decoder(nn.Module):
         # i=0
         # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
         for i in range(n_steps):
-            print(f'i and steps: {i} and {n_steps}')
             if not mask1[:, 1:].eq(0).any():
-                print(f'\n\nBreaking at i={i}, mask1: {mask1}\n\n')
                 break
             if i == 0:   
                 _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
@@ -82,7 +80,6 @@ class GAT_Decoder(nn.Module):
                 index = torch.zeros(batch_size, dtype=torch.long, device=device)
             else:
                 if greedy:
-                    print(f'p: {p}')
                     _, index = p.max(dim=-1)
                 else:
                     index = dist.sample()
@@ -103,13 +100,11 @@ class GAT_Decoder(nn.Module):
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
                                   ).squeeze(1)
             
-            # i+=1
+            i+=1
 
-        
         # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
-        print(f'actions: {actions}')
         log_p = log_ps.sum(dim=1)
 
         return actions, log_p
