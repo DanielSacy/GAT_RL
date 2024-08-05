@@ -5,7 +5,11 @@ import numpy as np
 import os
 import time
 import logging
-from src_batch.RL.Compute_Reward import compute_reward
+
+from ..RL.Compute_Reward import compute_reward
+from ..RL.MST_baseline_instance import mst_baseline
+#test
+from ..RL.MST_baseline_dynamic import mst_baseline as mst_baseline_dynamic
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,8 +21,6 @@ logging.info(f"Running on device: {device}")
 
 
 def adv_normalize(adv):
-    # std = adv.std()
-    # assert std != 0. and not torch.isnan(std), 'Need nonzero std'
     n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
     return n_advs
 
@@ -27,7 +29,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
     
     actor = model
     actor.train()
-    rollout = rol_baseline
+    # rollout = rol_baseline
     
     actor_optim = optim.Adam(actor.parameters(), lr)
 
@@ -41,24 +43,33 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             batch = batch.to(device)
             
             # Actor forward pass
-            actions, tour_logp, depot_visits = actor(batch, n_steps, greedy=False, T=T)
+            actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
+            print(f'actions in train: {actions}')
+            # Append the depot {0} at the end of every route
+            depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
+            actions = torch.cat([actions, depot_tensor], dim=1)
+            print(f'actions in train after append: {actions}')
             
             # Compute reward and baseline
             reward = compute_reward(actions, batch)
-            bl_reward = rollout.rollout(batch, n_steps)
+            # bl_reward = rollout.rollout(batch, n_steps)
+            mst_reward = mst_baseline(batch)
+            
+            # mst_dynamic_reward = mst_baseline_dynamic(batch)
+            # print(f'mst_dynamic_reward: {mst_dynamic_reward}')
                      
             # Compute advantage
-            advantage = (reward.detach() - bl_reward.detach())
+            advantage = (reward - mst_reward)
+            # advantage = (reward.detach() - bl_reward.detach())
             if not advantage.ne(0).any():
                 print("advantage==0.")
-            
+                
             # Whiten advantage    
             advantage = adv_normalize(advantage)
-            print("advantage normalized:", advantage)
+            # print(f'advantage normalized: {advantage}\n')
             
-            # Com Arvore Geradora Minima a vantagem será sempre negativa
-            reinforce_loss = (advantage.detach() * tour_logp).mean()
-            # reinforce_loss = torch.mean(advantage.detach() * tour_logp)
+            # Com Arvore Geradora Minima a vantagem será sempre negativa - SÓ QUE NÃO
+            reinforce_loss = -(advantage.detach() * tour_logp).mean()
             
             # Backward pass
             actor_optim.zero_grad()
@@ -79,7 +90,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
         # mean_loss = np.mean(losses[epoch])
         # mean_reward = np.mean(rewards[epoch])
 
-        print(f'Epoch {epoch}, mean loss: {mean_loss}, mean reward: {mean_reward}, time: {times}')
+        logging.debug(f'Epoch {epoch}, mean loss: {mean_loss}, mean reward: {mean_reward}, time: {times}')
 
         # rol_baseline.epoch_callback(actor, epoch)
 

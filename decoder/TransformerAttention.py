@@ -38,26 +38,18 @@ class TransformerAttention(nn.Module):
         self.k = nn.Linear(input_dim, hidden_dim, bias=False)
         self.v = nn.Linear(input_dim, hidden_dim, bias=False)
         self.fc = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        # if INIT:
-        #     for name, p in self.named_parameters():
-        #         if 'weight' in name:
-        #             if len(p.size()) >= 2:
-        #                 nn.init.orthogonal_(p, gain=1)
-        #         elif 'bias' in name:
-        #             nn.init.constant_(p, 0)
+
         self.reset_parameters()
     
     def reset_parameters(self):
         """
         This function initializes the parameters of the attention layer.
         It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
-        
-        SHOULD I PUT THE IF INIT HERE?
         """
-        nn.init.xavier_uniform_(self.w.weight.data)
-        nn.init.xavier_uniform_(self.k.weight.data)
-        nn.init.xavier_uniform_(self.v.weight.data)
-        nn.init.xavier_uniform_(self.fc.weight.data)
+        nn.init.xavier_uniform_(self.w.weight)
+        nn.init.xavier_uniform_(self.k.weight)
+        nn.init.xavier_uniform_(self.v.weight)
+        nn.init.xavier_uniform_(self.fc.weight)
 
     def forward(self, state_t, context, mask):
         """
@@ -80,20 +72,20 @@ class TransformerAttention(nn.Module):
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
 
         # Compute compatibility scores for calculating attention scores
-        compatibility = self.norm * torch.matmul(Q, K.transpose(2,3))  # (batch_size,n_heads,1,hidden_dim)*(batch_size,n_heads,hidden_dim,n_nodes)
-        compatibility = compatibility.squeeze(2)  # (batch_size,n_heads,n_nodes)
+        compatibility = self.norm * torch.matmul(Q, K.transpose(2,3)) # (batch_size, n_heads, 1, hidden_dim) * (batch_size, n_heads, hidden_dim, n_nodes)
+        
+        # (batch_size,n_heads,1,hidden_dim)*(batch_size,n_heads,hidden_dim,n_nodes)
+        compatibility = compatibility.squeeze(2)  # (batch_size, n_heads, n_nodes)
         mask = mask.unsqueeze(1).expand_as(compatibility)
         u_i = compatibility.masked_fill(mask.bool(), float("-inf"))
 
         # Compute attention scores and apply dropout to better generalize
         scores = F.softmax(u_i, dim=-1)  # (batch_size,n_heads,n_nodes)
-        scores = F.dropout(scores, p=self.attn_dropout, training=self.training)
         scores = scores.unsqueeze(2)
         
         # Process the weighted sum of the context nodes, apply dropout and return the output
-        out_put = torch.matmul(scores, V)  # (batch_size,n_heads,1,n_nodes )*(batch_size,n_heads,n_nodes,head_dim)
-        out_put = out_put.squeeze(2).view(batch_size, self.hidden_dim)  # （batch_size,n_heads,hidden_dim）
-        out_put = F.dropout(out_put, p=self.dropout, training=self.training) # Avoid overfitting
+        out_put = torch.matmul(scores, V)  
+        out_put = out_put.squeeze(2).view(batch_size, self.hidden_dim)
         out_put = self.fc(out_put)
 
-        return out_put  # (batch_size,hidden_dim)
+        return out_put  # out_put: (batch_size, hidden_dim)

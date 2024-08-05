@@ -17,13 +17,7 @@ class PointerAttention(nn.Module):
         self.norm = 1 / math.sqrt(hidden_dim)
         self.k = nn.Linear(input_dim, hidden_dim, bias=False)
         self.mhalayer = TransformerAttention(n_heads, 1, input_dim, hidden_dim)
-        # if INIT:
-        #     for name, p in self.named_parameters():
-        #         if 'weight' in name:
-        #             if len(p.size()) >= 2:
-        #                 nn.init.orthogonal_(p, gain=1)
-        #         elif 'bias' in name:
-        #             nn.init.constant_(p, 0)
+
         self.reset_parameters()
         
     def reset_parameters(self):
@@ -31,10 +25,10 @@ class PointerAttention(nn.Module):
         This function initializes the parameters of the attention layer.
         It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
         """
-        nn.init.xavier_uniform_(self.k.weight.data)
+        nn.init.xavier_uniform_(self.k.weight)
 
 
-    def forward(self, state_t, context, mask,T):
+    def forward(self, state_t, context, mask, T):
         '''
         This function computes the attention scores, applies the mask, computes the nodes probabilities and returns them as a softmax score.
         - Applies a clipping to the attention scores to avoid numerical instability.
@@ -54,15 +48,22 @@ class PointerAttention(nn.Module):
         batch_size, n_nodes, input_dim = context.size()
         Q = x.view(batch_size, 1, -1)
         K = self.k(context).view(batch_size, n_nodes, -1)
-        compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # (batch_size,1,n_nodes)
-        compatibility = compatibility.squeeze(1)
-        x = torch.tanh(compatibility)
-        x = x * (10)
-        # min_value = torch.finfo(x.dtype).min
-        # min_value = 1e-15
-        # x = x.masked_fill(mask.bool(), min_value)
-        x = x.masked_fill(mask.bool(), float("-inf"))
         
+        # Compute the compatibility scores
+        compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # Size: (batch_size, 1, n_nodes)
+        compatibility = compatibility.squeeze(1)
+        print(f'compatibility: {compatibility}')
+        # Non-linear transformation
+        x = torch.tanh(compatibility)
+        print(f'x tanh: {x}')
+        # Scaling the values to avoid numerical instability
+        x = x * (10)
+        print(f'x scaled: {x}')
+        
+        # Apply the mask
+        x = x.masked_fill(mask.bool(), float("-inf"))
+        print(f'x masked: {x}')
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
+        print(f'scores: {scores}')
         return scores
