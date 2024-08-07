@@ -1,2 +1,4 @@
 *.pyc
 instances/
+model_checkpoints/
+model_checkpoints_2/
