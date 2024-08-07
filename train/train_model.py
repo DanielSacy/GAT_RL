@@ -46,10 +46,11 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
             # Append the depot {0} at the end of every route
             depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
-            actions = torch.cat([actions, depot_tensor], dim=1)
+            actions = torch.cat([actions, depot_tensor], dim=1).detach()
             
             # Compute reward and baseline
-            reward = compute_reward(actions, batch)
+            # Should detach the actions tensor to avoid backpropagating through the reward computation
+            reward = compute_reward(actions.detach(), batch)
             # bl_reward = rollout.rollout(batch, n_steps)
             mst_reward = mst_baseline(batch)
             
@@ -67,7 +68,7 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             # print(f'advantage normalized: {advantage}\n')
             
             # Com Arvore Geradora Minima a vantagem será sempre negativa - SÓ QUE NÃO
-            reinforce_loss = -(advantage.detach() * tour_logp).mean()
+            reinforce_loss = (advantage.detach() * tour_logp).mean()
             
             # Backward pass
             actor_optim.zero_grad()

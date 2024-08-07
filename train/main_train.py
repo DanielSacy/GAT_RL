@@ -19,13 +19,13 @@ logging.info(f"Running on device: {device}")
 def main_train():
     
     # Define the folder and filename for the model checkpoints
+    # folder = 'model_checkpoints_2'
     folder = 'model_checkpoints'
-    # folder = 'model_checkpoints'
     filename = 'actor.pt'
 
     # Create dataset
     # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm.CSV'
-    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\TSP_train_20_1000.CSV'
+    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_1000.CSV"
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
     
     # Create dataloaders
@@ -50,7 +50,7 @@ def main_train():
     n_steps = 1000
     lr = 1e-4
     # greedy = False
-    T = 2.5 #1.0
+    T = 2 #1.0
 
     num_epochs = 100
     n_rollouts = 1

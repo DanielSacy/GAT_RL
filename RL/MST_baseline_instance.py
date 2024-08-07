@@ -7,9 +7,5 @@ def mst_baseline(batch):
     """
     
     mst_baseline_value = batch.mst_value
-    # print(f'batch: {batch}')
-    # for data in batch:
-    #     print(f'data.mst_value: {data.mst_value}')
-    #     mst_baseline_value.append(mst_val.mst_value)
-    #     print(f'mst_baseline_value: {mst_baseline_value}')
-    return mst_baseline_value
+
+    return mst_baseline_value.detach()

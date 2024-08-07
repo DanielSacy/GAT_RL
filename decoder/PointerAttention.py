@@ -63,5 +63,4 @@ class PointerAttention(nn.Module):
         
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
-        print(f'scores: {scores}\n')
         return scores
