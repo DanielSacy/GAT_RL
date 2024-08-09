@@ -37,13 +37,6 @@ def compute_reward(actions, data):
         route_distance = 0
         # capacity_left = data.capacity[b].item()
 
-        # # Check if the route starts and ends at the depot
-        # if route[0] != 0:
-        #     route_distance += 1000  # penalty for not starting at the depot
-    
-        # if route[-1] != 0:
-        #     route_distance += 1000  # penalty for not ending at the depot
-
         for i in range(len(actions[b])):
             current_location = route[i].item()
             if i < len(route) - 1:
@@ -52,16 +45,8 @@ def compute_reward(actions, data):
                 break
 
             route_distance += get_edge_distance(edge_index, edge_attr, current_location, next_location)
-            
-            # capacity_left -= data.demand[current_location]#data.demand[next_location]
             current_location = next_location
-            
-            # if capacity_left < 0:
-            #     route_distance += 500  # penalty for exceeding capacity
         
-        # total_distance += route_distance
-        rewards.append(route_distance)
-    
-    # reward = -total_distance
+        rewards.append(-route_distance)
     
     return torch.tensor(rewards, device=actions.device).detach()

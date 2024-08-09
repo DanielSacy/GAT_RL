@@ -24,14 +24,15 @@ def main_train():
     filename = 'actor.pt'
 
     # Create dataset
-    train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm.CSV'
-    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm2.CSV'
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_1000.CSV"
+    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm.CSV'
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_1000_normal.CSV"
+    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_5000.CSV"
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_10000.CSV"
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 2
+    batch_size = 100
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
@@ -47,13 +48,12 @@ def main_train():
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
-    capacity = data_loader.dataset[0].capacity
     n_steps = 100
     lr = 1e-4
     # greedy = False
-    T = 2 #1.0
+    T = 2.5 #1.0
 
-    num_epochs = 1
+    num_epochs = 100
     n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline
