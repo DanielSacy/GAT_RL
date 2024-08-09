@@ -68,8 +68,8 @@ class GAT_Decoder(nn.Module):
             decoder_input = decoder_input + pool
             
             # If it is the first step, update the mask to avoid visiting the depot again
-            if i == 0:
-                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            # if i == 0:
+            #     mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             
             # Compute the probability distribution         
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
@@ -100,7 +100,7 @@ class GAT_Decoder(nn.Module):
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
                                   ).squeeze(1)
             
-            i+=1
+            # i+=1
 
         # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)

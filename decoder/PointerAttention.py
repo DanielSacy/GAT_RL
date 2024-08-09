@@ -60,7 +60,6 @@ class PointerAttention(nn.Module):
         
         # Apply the mask
         x = x.masked_fill(mask.bool(), float("-inf"))
-        
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
         return scores

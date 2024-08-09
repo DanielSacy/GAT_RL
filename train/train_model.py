@@ -8,8 +8,6 @@ import logging
 
 from ..RL.Compute_Reward import compute_reward
 from ..RL.MST_baseline_instance import mst_baseline
-#test
-from ..RL.MST_baseline_dynamic import mst_baseline as mst_baseline_dynamic
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -53,27 +51,30 @@ def train(model, rol_baseline, data_loader, validation_loader, folder, filename,
             reward = compute_reward(actions.detach(), batch)
             # bl_reward = rollout.rollout(batch, n_steps)
             mst_reward = mst_baseline(batch)
-            
-            # mst_dynamic_reward = mst_baseline_dynamic(batch)
-            # print(f'mst_dynamic_reward: {mst_dynamic_reward}')
-                     
+             
             # Compute advantage
             advantage = (reward - mst_reward)
+            print(f'advantage: {advantage}\n')
             # advantage = (reward.detach() - bl_reward.detach())
             if not advantage.ne(0).any():
                 print("advantage==0.")
                 
             # Whiten advantage    
-            advantage = adv_normalize(advantage)
+            # advantage_norm = adv_normalize(advantage)
             # print(f'advantage normalized: {advantage}\n')
             
             # Com Arvore Geradora Minima a vantagem será sempre negativa - SÓ QUE NÃO
-            reinforce_loss = (advantage.detach() * tour_logp).mean()
+            reinforce_loss = (advantage * tour_logp).mean()
+            print(f'reinforce_loss: {reinforce_loss}\n')
+            # reinforce_loss = (advantage.detach() * tour_logp).mean()
             
             # Backward pass
             actor_optim.zero_grad()
             reinforce_loss.backward()
+            
+            #CLIP ajuda bastante em geral
             # torch.nn.utils.clip_grad_value_(actor.parameters(), max_grad_norm)
+            
             actor_optim.step()
 
             rewards.append(torch.mean(reward.detach()).item())

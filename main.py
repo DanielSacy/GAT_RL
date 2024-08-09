@@ -20,18 +20,6 @@ def prepare_data(data_path, batch_size=1):
     data_loader = IG.get_dataloader(data_path, batch_size=batch_size)
     return data_loader
 
-def load_model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout, model_path, device):
-    model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
-    print("Model parameters before loading:")
-    for name, param in model.named_parameters():
-        print(f'{name}: {param[0]}')
-    model.load_state_dict(torch.load(model_path, device))
-    print("\n\n\nModel parameters before loading:")
-    for name, param in model.named_parameters():
-        print(f'{name}: {param[0]}')
-
-    return model
-
 def run_inference(model, data_loader, n_steps, greedy, T):
     model.eval()  # Set the model to evaluation mode
     results = []
@@ -59,10 +47,9 @@ def main():
     # Define paths
     model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\model_checkpoints\99\actor.pt"
     # model_path = r"model_checkpoints_2\99\actor.pt"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\fullModel\SCIP\CVRP\debug_4_200_norm.CSV"
+    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\fullModel\SCIP\CVRP\debug_4_200_norm.CSV"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\fullModel\SCIP\CVRP\TSP_test_20_100.CSV"
-    # data_path = r"instances/train/train_10_100.CSV"
-    
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm2.CSV"
     
     #Params
     node_input_dim = 1
@@ -73,15 +60,15 @@ def main():
     dropout = 0.6
     n_steps = 100
     greedy = True
-    T = 2 # Temperature for softmax based on Kun et al. (2021)
+    T = 2.5 # Temperature for softmax based on Kun et al. (2021)
     batch_size = 1
+
+    model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
+    model.load_state_dict(torch.load(model_path, device))
 
     # Prepare the data
     data_loader = prepare_data(data_path, batch_size)
     
-    # Load the pre-trained model
-    model = load_model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout, model_path, device)
-
     # Run inference
     results = run_inference(model, data_loader, n_steps, greedy, T)
     

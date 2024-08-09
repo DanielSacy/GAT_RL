@@ -1,4 +1,5 @@
 *.pyc
+__pycache__/
 instances/
 model_checkpoints/
 model_checkpoints_2/

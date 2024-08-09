@@ -29,14 +29,15 @@ class InstanceGenerator:
 
         Arcs = [(i, j) for i in N for j in N if i != j]  # Set of arcs between the nodes
 
-        demand = {i: 0 if i not in No else int(np.random.randint(1, self.max_demand, 1)[0]) for i in N} # Demand per customer
+        demand = {i: 0 if i not in No else 4 for i in N} # Demand per customer
+        # demand = {i: 0 if i not in No else int(np.random.randint(1, self.max_demand, 1)[0]) for i in N} # Demand per customer
 
         M = list(np.arange(1, self.n_vehicles + 1))  # Set of vehicles
 
-        load_capacity = 100  # Load capacity per vehicle
+        load_capacity = 10  # Load capacity per vehicle
         # load_capacity = 500  # For TSP simulation
 
-        distance =  {(i,j):int(np.random.randint(1, self.max_distance+1, 25)[0]) for i,j in Arcs}
+        distance =  {(i,j):int(np.random.randint(1, self.max_distance+1, 3)[0]) for i,j in Arcs}
         # distance = {(i, j): 100 for i in N for j in N if i != j}  # Constant distance for simplicity
         
          # Compute the distance matrix for MST computation
