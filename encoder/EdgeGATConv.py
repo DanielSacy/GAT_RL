@@ -20,11 +20,18 @@ class EdgeGATConv(MessagePassing):
         
         self.fc = torch.nn.Linear(node_channels, hidden_dim)
         self.att_vector = torch.nn.Linear(hidden_dim * 3, hidden_dim)
+        
+        self.reset_parameters()
 
-        torch.nn.init.xavier_uniform_(self.att_vector.weight)
+    def reset_parameters(self):
+        """
+        This function initializes the parameters of the encoder.
+        """
         torch.nn.init.xavier_uniform_(self.fc.weight)
-
-
+        torch.nn.init.xavier_uniform_(self.att_vector.weight)
+        torch.nn.init.constant_(self.fc.bias, 0)
+        torch.nn.init.constant_(self.att_vector.bias, 0)
+        
     def forward(self, x, edge_index, edge_attr, size=None):
         """This function computes the node embeddings."""
         x = self.fc(x)

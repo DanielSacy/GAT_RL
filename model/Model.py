@@ -16,12 +16,11 @@ class Model(nn.Module):
         # Compute the graph embedding > mean of all node embeddings per feature dimension
         graph_embedding = x.mean(dim=1) # Shape of graph_embedding: (batch_size, hidden_dim)
 
-        # Get the demand and capacity
+        # Get the demand and capacity - Detach them?
         batch_size = data.batch.max().item() + 1
-        demand = data.demand.view(batch_size, -1).float().to(data.x.device).detach()
-        capacity = data.capacity.view(batch_size, -1).float().to(data.x.device).detach()
-        # capacity = self.capacity.clone().detach().unsqueeze(-1).float().to(data.x.device)
-
+        demand = data.demand.reshape(batch_size, -1).float().to(data.x.device)
+        capacity = data.capacity.reshape(batch_size, -1).float().to(data.x.device)
+        
         # Call the decoder
         actions, log_p = self.decoder(x, graph_embedding, capacity, demand, n_steps,T, greedy)
         

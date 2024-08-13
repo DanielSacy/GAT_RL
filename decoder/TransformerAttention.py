@@ -66,9 +66,12 @@ class TransformerAttention(nn.Module):
         
         # Compute Q, K, and V
         batch_size, n_nodes, input_dim = context.size()
-        Q = self.w(state_t).view(batch_size, 1, self.n_heads, -1)
-        K = self.k(context).view(batch_size, n_nodes, self.n_heads, -1)
-        V = self.v(context).view(batch_size, n_nodes, self.n_heads, -1)
+        # Q = self.w(state_t).view(batch_size, 1, self.n_heads, -1)
+        # K = self.k(context).view(batch_size, n_nodes, self.n_heads, -1)
+        # V = self.v(context).view(batch_size, n_nodes, self.n_heads, -1)
+        Q = self.w(state_t).reshape(batch_size, 1, self.n_heads, -1)
+        K = self.k(context).reshape(batch_size, n_nodes, self.n_heads, -1)
+        V = self.v(context).reshape(batch_size, n_nodes, self.n_heads, -1)
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
 
         # Compute compatibility scores for calculating attention scores
@@ -85,7 +88,8 @@ class TransformerAttention(nn.Module):
         
         # Process the weighted sum of the context nodes, apply dropout and return the output
         out_put = torch.matmul(scores, V)  
-        out_put = out_put.squeeze(2).view(batch_size, self.hidden_dim)
+        # out_put = out_put.squeeze(2).view(batch_size, self.hidden_dim)
+        out_put = out_put.squeeze(2).reshape(batch_size, self.hidden_dim)
         out_put = self.fc(out_put)
 
         return out_put  # out_put: (batch_size, hidden_dim)

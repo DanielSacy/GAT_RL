@@ -1,6 +1,3 @@
-import torch
-import networkx as nx
-
 def mst_baseline(batch):
     """
     Compute the MST baseline for the given data.
@@ -9,4 +6,4 @@ def mst_baseline(batch):
     mst_baseline_value = batch.mst_value
     mst_baseline_value = -mst_baseline_value
 
-    return mst_baseline_value.detach()
+    return mst_baseline_value

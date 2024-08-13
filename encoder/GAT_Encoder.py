@@ -1,7 +1,7 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Linear, BatchNorm1d as BatchNorm, Sequential, ReLU
-import torch_geometric
+from torch.nn import Linear, BatchNorm1d as BatchNorm
 from src_batch.encoder.EdgeGATConv import EdgeGATConv
 
 
@@ -26,8 +26,11 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         self.edge_gat_layers = torch.nn.ModuleList(
             [EdgeGATConv(hidden_dim, hidden_dim, negative_slope, dropout) for _ in range(layers)]
         )
-        
+
+        # Initialize the parameters of the encoder
+        # EdgeGAT layers are initialized in the EdgeGATConv class
         self.reset_parameters()
+
         
     def reset_parameters(self):
         """
@@ -54,5 +57,4 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
             x = x + x_next
         
         x = x.reshape(batch_size, -1, self.hidden_dim) 
-        
         return x # Shape of x: (batch_size, num_nodes, hidden_dim)

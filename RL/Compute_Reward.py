@@ -49,4 +49,4 @@ def compute_reward(actions, data):
         
         rewards.append(-route_distance)
     
-    return torch.tensor(rewards, device=actions.device).detach()
+    return torch.tensor(rewards, device=actions.device)

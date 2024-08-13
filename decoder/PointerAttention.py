@@ -46,12 +46,15 @@ class PointerAttention(nn.Module):
         x = self.mhalayer(state_t, context, mask)
 
         batch_size, n_nodes, input_dim = context.size()
-        Q = x.view(batch_size, 1, -1)
-        K = self.k(context).view(batch_size, n_nodes, -1)
+        # Q = x.view(batch_size, 1, -1)
+        # K = self.k(context).view(batch_size, n_nodes, -1)
+        Q = x.reshape(batch_size, 1, -1)
+        K = self.k(context).reshape(batch_size, n_nodes, -1)
         
         # Compute the compatibility scores
         compatibility = self.norm * torch.matmul(Q, K.transpose(1, 2))  # Size: (batch_size, 1, n_nodes)
         compatibility = compatibility.squeeze(1)
+        
         # Non-linear transformation
         x = torch.tanh(compatibility)
         
@@ -60,6 +63,8 @@ class PointerAttention(nn.Module):
         
         # Apply the mask
         x = x.masked_fill(mask.bool(), float("-inf"))
+        
         # Compute the softmax scores
         scores = F.softmax(x / T, dim=-1)
+        
         return scores

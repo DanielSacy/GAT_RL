@@ -8,7 +8,7 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 
 class InstanceGenerator:
-    def __init__(self, n_customers=5, n_vehicles=2, max_demand=100, max_distance=200):
+    def __init__(self, n_customers=5, n_vehicles=4, max_demand=10, max_distance=20):
         self.n_customers = n_customers
         self.n_vehicles = n_vehicles
         self.max_demand = max_demand

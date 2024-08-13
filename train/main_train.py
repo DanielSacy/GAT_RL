@@ -19,20 +19,21 @@ logging.info(f"Running on device: {device}")
 def main_train():
     
     # Define the folder and filename for the model checkpoints
-    # folder = 'model_checkpoints_2'
-    folder = 'model_checkpoints'
+    folder = 'model_checkpoints_2'
+    # folder = 'model_checkpoints'
     filename = 'actor.pt'
 
     # Create dataset
-    # train_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_200_norm.CSV'
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_1000_normal.CSV"
-    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_5000.CSV"
+    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_1_2instances.CSV"
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_10.CSV"
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_5000.CSV"
     # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_10000.CSV"
-    validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_100.CSV'
+    validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV'
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 100
+    batch_size = 1
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
@@ -44,7 +45,7 @@ def main_train():
     # Model parameters
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 128
+    hidden_dim = 16
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
@@ -53,16 +54,14 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
 
-    num_epochs = 100
+    num_epochs = 1
     n_rollouts = 1
     
     # Instantiate the Model and the RolloutBaseline
     model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
-    rol_baseline = RolloutBaseline(model, n_rollouts)
-    # rol_baseline = RolloutBaseline(model, data_loader, n_steps, T, epoch=0).to(device)
     
     # Call the train function
-    train(model, rol_baseline, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T)
+    train(model, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T)
 
 if __name__ == "__main__":
     main_train()
