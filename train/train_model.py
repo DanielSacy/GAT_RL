@@ -17,7 +17,7 @@ def adv_normalize(adv):
     n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
     return n_advs
 
-def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T):
+def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 10.0
     

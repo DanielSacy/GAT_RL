@@ -8,11 +8,14 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 
 class InstanceGenerator:
-    def __init__(self, n_customers=5, n_vehicles=4, max_demand=10, max_distance=20):
+    def __init__(self, n_customers=5, n_vehicles=4, max_demand=10, max_distance=20, random_seed=None):
         self.n_customers = n_customers
         self.n_vehicles = n_vehicles
         self.max_demand = max_demand
         self.max_distance = max_distance
+        
+        if random_seed is not None:
+            np.random.seed(random_seed)
     
     @staticmethod  
     def compute_mst_route_value(route, distance):
@@ -65,16 +68,27 @@ class InstanceGenerator:
         capacity = torch.tensor([load_capacity], dtype=torch.float)
         
         data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, demand=node_features, capacity=capacity, mst_value=mst_value, mst_route=mst_route)
-    
-        return data
 
-    def generate_and_save_instances(self, instances_config, filename):
-        all_instances = []
-        # capacities = []
+        return data
+    
+    def get_dataloader_memory(self, instances_config, batch_size=1, save_to_csv=False, filename=None):
+        data_list = []
         for config in instances_config:
             self.n_customers, self.max_demand, self.max_distance = config['n_customers'], config['max_demand'], config['max_distance']
-            for instance_num in range(1, config['num_instances'] + 1):
+            for _ in range(1, config['num_instances'] + 1):
+        # for _ in range(num_instances):
                 data = self.instance_to_data()
+                data_list.append(data)
+        
+        if save_to_csv and filename:
+            self.generate_and_save_instances(data_list, filename)
+        
+        data_loader = DataLoader(data_list, batch_size=batch_size, shuffle=False)
+        return data_loader
+
+    def generate_and_save_instances(self, data_list, filename):
+        all_instances = []
+        for instance_num, data in enumerate(data_list, start=1):
                 node_demands = data.x.numpy().flatten()
                 edge_indices = data.edge_index.numpy().T
                 edge_distances = data.edge_attr.numpy().flatten()
@@ -93,12 +107,10 @@ class InstanceGenerator:
                     'MstValue': np.repeat(mst_value, len(edge_distances)),
                     'MstRoute': np.repeat(mst_route, len(edge_distances) // len(mst_route), axis=0)
                 })
-                # capacities.append(capacity)
 
                 all_instances.append(instance_df)
 
         full_df = pd.concat(all_instances, ignore_index=True)
-        # full_df['Capacity'] = pd.Series(capacities).repeat(len(full_df) // len(capacities)).values
         full_df.to_csv(filename, index=False)
         print(f"All instances saved to {filename}")
     
@@ -128,7 +140,8 @@ class InstanceGenerator:
             data_list.append(data)    
         return data_list
 
-    def get_dataloader(self, filename, batch_size=1):
+    def get_dataloader_CSV(self, filename, batch_size=1):
         data_list = self.csv_to_data_list(filename)
         data_loader = DataLoader(data_list, batch_size=batch_size, shuffle=False)
         return data_loader
+
