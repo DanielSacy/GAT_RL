@@ -26,12 +26,11 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         self.edge_gat_layers = torch.nn.ModuleList(
             [EdgeGATConv(hidden_dim, hidden_dim, negative_slope, dropout) for _ in range(layers)]
         )
-
+        
         # Initialize the parameters of the encoder
         # EdgeGAT layers are initialized in the EdgeGATConv class
         self.reset_parameters()
 
-        
     def reset_parameters(self):
         """
         This function initializes the parameters of the encoder.

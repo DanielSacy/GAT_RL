@@ -45,7 +45,7 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 
 def main():
     # Define paths
-    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\model_checkpoints_2\67\actor.pt"
+    model_path = r"model_checkpoints_2\90\actor.pt"
     # model_path = r"KunLei_actor.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_10.CSV"
     data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\TSP_val_100.CSV"
@@ -53,12 +53,12 @@ def main():
     #Params
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 128
+    hidden_dim = 64
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
     n_steps = 100
-    greedy = False
+    greedy = True
     T = 2.5 # Temperature for softmax based on Kun et al. (2021)
     batch_size = 1
 

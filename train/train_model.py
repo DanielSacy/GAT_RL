@@ -5,18 +5,11 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import os
 import time
-import logging
 
 from src_batch.RL.Compute_Reward import compute_reward
 from src_batch.RL.MST_baseline_instance import mst_baseline
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-logging.info(f"Running on device: {device}")
 
 writer = SummaryWriter()
 
@@ -26,7 +19,7 @@ def adv_normalize(adv):
 
 def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
-    max_grad_norm = 2.0
+    max_grad_norm = 10.0
     
     # Instantiate the model and the optimizer
     actor = model
@@ -34,7 +27,11 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
     
     # Initialize an empty list to store results for pandas dataframe
     training_results = []
-
+    min_reward_soFar = float('-inf')
+    min_loss_soFar = float('inf')
+    
+    train_start = time.time()
+    
     for epoch in range(num_epochs):
         print("epoch:", epoch, "------------------------------------------------")
         actor.train()
@@ -56,7 +53,13 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
             # Should detach the actions tensor to avoid backpropagating through the reward computation
             reward = compute_reward(actions.detach(), batch)
             mst_reward = mst_baseline(batch)
-             
+            
+            # If the reward is less than the minimum so far, save it
+            if torch.mean(reward.detach()).item() > min_reward_soFar:
+                min_reward_soFar = torch.mean(reward).item()
+                save_path = os.path.join(folder, 'best_actor.pt')
+                torch.save(actor.state_dict(), save_path)
+
             # Compute advantage
             # Negative reward with negative baseline
             # Reward is greater than baseline so advantage is negative
@@ -67,6 +70,13 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
             
             # Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
+            
+            # If loss is less than the minimum so far, save it
+            if reinforce_loss.item() < min_loss_soFar:
+                min_loss_soFar = reinforce_loss.item()
+                save_path = os.path.join(folder, 'best_actor.pt')
+                torch.save(actor.state_dict(), save_path)
+            
             actor_optim.zero_grad()
             reinforce_loss.backward()
             
@@ -75,6 +85,7 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
             for name, param in actor.named_parameters():
                 if param.grad is not None:
                     writer.add_scalar(f'Gradients/{name}_grad_norm', param.grad.norm(), epoch)
+                    
             # total_norm_before = 0.0
             # for p in model.parameters():
             #     if p.grad is not None:
@@ -93,7 +104,7 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
             #         param_norm = p.grad.data.norm(2)
             #         total_norm_after += param_norm.item() ** 2
             # total_norm_after = total_norm_after ** 0.5
-            # # print(f"Total norm after clipping: {total_norm_after}")
+            # print(f"Total norm after clipping: {total_norm_after}")
             # for name, p in model.named_parameters():
             #     if p.grad is not None:
             #         # print(f'{name} grad norm before: {p.grad.data.norm(2)}')
@@ -107,13 +118,13 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
             rewards.append(torch.mean(reward.detach()).item())
             mst_rewards.append(torch.mean(mst_reward.detach()).item())
             losses.append(torch.mean(reinforce_loss.detach()).item())
-            # param_norms.append(param.grad.norm().item())
+            # param_norms.append(total_norm_before).detach()
 
         # Print epoch Time
         end = time.time()
-        epoch_time = end - start
-        times.append(end - start)
-        start = end
+        epoch_time = end - epoch_start
+        times.append(end - epoch_start)
+        epoch_start = end
 
         mean_loss = np.mean(losses)
         mean_reward = np.mean(rewards)
@@ -123,10 +134,14 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
         training_results.append({
             'epoch': epoch,
             'mean_reward': f'{mean_reward:.3f}',
+            'MIN_REWARD': f'{min_reward_soFar:.3f}',
             'mean_mst_reward': f'{mean_mst_reward:.3f}',
+            ' ': ' ',
             'mean_loss': f'{mean_loss:.3f}',
-            'epoch_time': f'{epoch_time:.3f}',
-            'param_norm': f'{np.mean(param_norms):.3f}'
+            'MIN_LOSS': f'{min_loss_soFar:.3f}',
+            ' ': ' ',
+            'epoch_time': f'{epoch_time:.2f}'
+            # 'param_norm': f'{np.mean(param_norms):.3f}'
         })
 
         # Convert the results to a pandas DataFrame
@@ -135,19 +150,19 @@ def train(model, data_loader, validation_loader, folder, filename, lr, n_steps, 
         # Save the results to a CSV file
         results_df.to_csv('instances/Training_Results.csv', index=False)
 
-        logging.debug(f'Epoch {epoch}, mean loss: {mean_loss:4f}, mean reward: {mean_reward}, time: {epoch_time:.2f}')
+        print(f'Epoch {epoch}, mean loss: {mean_loss:4f}, mean reward: {mean_reward}, time: {epoch_time:.2f}')
 
         # Save the model if it is the best so far
         epoch_dir = os.path.join(folder, '%s' % epoch)
         if not os.path.exists(epoch_dir):
             os.makedirs(epoch_dir)
         save_path = os.path.join(epoch_dir, 'actor.pt')
-        # if best_model is None or mean_reward > np.mean(rewards):
-        #     best_model = torch.save(actor.state_dict(), save_path)
-        #     print(f'Saved model at epoch {epoch} with mean reward: {mean_reward}')
         torch.save(actor.state_dict(), save_path)
+        
+        # Push losses and rewards to tensorboard
         writer.flush()
 
-         
-    logging.debug(f'epoch {epoch}, mean loss: {np.mean(losses)}, mean reward: {np.mean(rewards)}')
+    training_end = time.time()
+    training_time = training_end - train_start
+    print(f'epoch {epoch}, mean loss: {np.mean(losses)}, mean reward: {np.mean(rewards)}, time: {training_time:.2f}')
     writer.close()

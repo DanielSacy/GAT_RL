@@ -17,9 +17,9 @@ class GAT_Decoder(nn.Module):
 
         self.pointer = PointerAttention(8, input_dim, hidden_dim)
 
-        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False) # +1 to adjust for the concatenated capacity
-        self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
-
+        self.fc = nn.Linear(hidden_dim+1, hidden_dim)#, bias=False) # +1 to adjust for the concatenated capacity
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim)#, bias=False)
+    
         self.reset_parameters()
         
     def reset_parameters(self):
@@ -29,7 +29,9 @@ class GAT_Decoder(nn.Module):
         """
         nn.init.xavier_uniform_(self.fc.weight)
         nn.init.xavier_uniform_(self.fc1.weight)
-
+        nn.init.constant_(self.fc.bias, 0)
+        nn.init.constant_(self.fc1.bias, 0)
+        
     def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy):
         # encoder_inputs: (batch_size, n_nodes, hidden_dim)
         device = encoder_inputs.device # to ensure the tensors are on the same device
@@ -68,8 +70,8 @@ class GAT_Decoder(nn.Module):
             decoder_input = decoder_input + pool
             
             # If it is the first step, update the mask to avoid visiting the depot again
-            if i == 0:
-                mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            # if i == 0:
+            #     mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
             
             # Compute the probability distribution         
             p = self.pointer(decoder_input, encoder_inputs, mask,T)
@@ -83,7 +85,6 @@ class GAT_Decoder(nn.Module):
                     _, index = p.max(dim=-1)
                 else:
                     index = dist.sample()
-                
             actions.append(index.data.unsqueeze(1))            
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()

@@ -19,21 +19,25 @@ logging.info(f"Running on device: {device}")
 def main_train():
     
     # Define the folder and filename for the model checkpoints
-    folder = 'model_checkpoints_2'
-    # folder = 'model_checkpoints'
+    # folder = 'model_checkpoints_2' # Best model so far
+    folder = 'model_checkpoints'
     filename = 'actor.pt'
 
     # Create dataset
-    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_1_2instances.CSV"
+    '''DEBUG'''
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_1_2instances.CSV"
     # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
     # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_10.CSV"
+    '''TRAIN'''
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_1000.CSV"
     # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_5000.CSV"
     # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_10000.CSV"
+    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_50000.CSV"
     validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV'
     
     # Create dataloaders
     IG = InstanceGenerator()
-    batch_size = 1
+    batch_size = 25
     data_loader = IG.get_dataloader(train_dataset, batch_size=batch_size)
     validation_loader = IG.get_dataloader(validation_dataset, batch_size=batch_size)
     
@@ -45,7 +49,7 @@ def main_train():
     # Model parameters
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 16
+    hidden_dim = 64
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
@@ -54,8 +58,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
 
-    num_epochs = 1
-    n_rollouts = 1
+    num_epochs = 100
     
     # Instantiate the Model and the RolloutBaseline
     model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
