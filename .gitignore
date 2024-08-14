@@ -4,3 +4,4 @@ instances/
 runs/
 model_checkpoints/
 model_checkpoints_2/
+actor.pt
