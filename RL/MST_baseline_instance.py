@@ -4,6 +4,6 @@ def mst_baseline(batch):
     """
     
     mst_baseline_value = batch.mst_value
-    mst_baseline_value = -mst_baseline_value
+    # mst_baseline_value = -mst_baseline_value
 
     return mst_baseline_value

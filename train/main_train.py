@@ -2,12 +2,12 @@ import time
 import torch
 import os
 import logging
+from torch.profiler import profile, record_function, ProfilerActivity
+
 
 from src_batch.model.Model import Model
 from src_batch.train.train_model import train
 from src_batch.instance_creator.instance_loader import instance_loader
-
-
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -21,29 +21,27 @@ def main_train():
     logging.info("Starting training pipeline")
     # Define the folder and filename for the model checkpoints
     # folder = 'model_checkpoints_2' # Best model so far
-    folder = 'model_checkpoints'
+    folder = 'model_checkpoints__'
     filename = 'actor.pt'
 
     # Create dataset
-    '''DEBUG'''
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_1_2instances.CSV"
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_10.CSV"
     '''TRAIN'''
-    train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_50000.CSV"
-    validation_dataset = r'D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV'
+    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_50000.CSV"
     
     # Define the configurations for the instances
     config = [
-    {'n_customers': 20, 'max_demand': 10, 'max_distance': 20, 'num_instances': 24000}
+    {'n_customers': 4, 'max_demand': 10, 'max_distance': 20, 'num_instances': 2}
     # Add more configurations as needed
     ]
-    
-    logging.info("Creating dataloaders")
     # Create dataloaders
-    batch_size = 16
+    # Sending the data to the device when generating the data
+    start_to_load = time.time()
+    logging.info("Creating dataloaders")
+    batch_size = 1
     save_to_csv = False
-    data_loader = instance_loader(config, batch_size, save_to_csv)   
+    data_loader = instance_loader(config, batch_size, save_to_csv) 
+    end_of_load = time.time()
+    logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
     
     # Ensure the output directory exists
     if not os.path.exists(folder):
@@ -52,7 +50,7 @@ def main_train():
     # Model parameters
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 64
+    hidden_dim = 128
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
@@ -65,11 +63,19 @@ def main_train():
     
     logging.info("Instantiating the model")
     # Instantiate the Model and the RolloutBaseline
-    model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
+    model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout)
+    # baseline = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
     
     logging.info("Calling the train function")
     # Call the train function
     train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
+    # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
+    #     with record_function("model_inference"):
+    #         train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
+        
+    # logging.info(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=10))
+    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    logging.info("Training pipeline finished")
 
 if __name__ == "__main__":
     pipeline_start = time.time()

@@ -101,10 +101,12 @@ class GAT_Decoder(nn.Module):
                                   ).squeeze(1)
             
             # i+=1
-
+        
         # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
+        depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
+        actions = torch.cat([actions, depot_tensor], dim=1)
         log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
 
         return actions, log_p

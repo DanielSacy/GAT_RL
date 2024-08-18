@@ -36,9 +36,9 @@ class EdgeGATConv(MessagePassing):
         """This function computes the node embeddings."""
         x = self.fc(x)
                 
-        return self.propagate(edge_index, x=x, edge_attr=edge_attr, size=size)
+        return self.propagate(edge_index=edge_index, x=x, edge_attr=edge_attr, size=size)
     
-    def message(self, edge_index_i, x_i, x_j, edge_attr, size_i):
+    def message(self, edge_index_i, x_i, x_j, size_i, edge_attr):
         """This function computes the attention coefficients and returns the message to be aggregated."""
         # Concatenate features
         x = torch.cat([x_i, x_j, edge_attr], dim=-1)

@@ -6,6 +6,7 @@ from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
 from src_batch.model.Model import Model
 
 from RL.Compute_Reward import compute_reward
+from RL.Pairwise_reward import pairwise_reward
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,7 +18,7 @@ logging.info(f"Running on device: {device}")
 
 def prepare_data(data_path, batch_size=1):
     IG = InstanceGenerator()
-    data_loader = IG.get_dataloader(data_path, batch_size=batch_size)
+    data_loader = IG.get_dataloader_CSV(data_path, batch_size=batch_size)
     return data_loader
 
 def run_inference(model, data_loader, n_steps, greedy, T):
@@ -45,10 +46,10 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 
 def main():
     # Define paths
-    model_path = r"model_checkpoints_2\90\actor.pt"
+    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\model_checkpoints_Exp6_180824\90\actor.pt"
     # model_path = r"KunLei_actor.pt"
-    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_10.CSV"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\TSP_val_100.CSV"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV"
+    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
     
     #Params
     node_input_dim = 1
@@ -62,25 +63,36 @@ def main():
     T = 2.5 # Temperature for softmax based on Kun et al. (2021)
     batch_size = 1
 
+    # Instantiate the model
     model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
-    model.load_state_dict(torch.load(model_path, device))
 
     # Prepare the data
     data_loader = prepare_data(data_path, batch_size)
     
-    # Run inference
-    results = run_inference(model, data_loader, n_steps, greedy, T)
+    # Run inference for untained model
+    results_baseline = run_inference(model, data_loader, n_steps, greedy, T)
+    
+    # Run inference for trained model
+    model.load_state_dict(torch.load(model_path, device))
+    results_trained = run_inference(model, data_loader, n_steps, greedy, T)
     
     # Load the original CSV
     df = pd.read_csv(data_path)
     
     # Assuming there's a one-to-one mapping between the rows in the CSV and the results
-    if len(df['InstanceID'].unique()) == len(results):
+    if len(df['InstanceID'].unique()) == len(results_baseline):
         result_idx = 0
         for instance_id in df['InstanceID'].unique():
             first_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[0]
-            df.at[first_occurrence_idx, 'GAT_Value'] = results[result_idx][0]
-            df.at[first_occurrence_idx, 'GAT_Solution'] = results[result_idx][1]
+            second_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[1]
+            third_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[2]
+            
+            df.at[first_occurrence_idx, 'GAT_Baseline'] = results_baseline[result_idx][0]
+            df.at[first_occurrence_idx, 'GAT_BL_Solution'] = results_baseline[result_idx][1]
+            df.at[second_occurrence_idx, 'GAT_Baseline'] = "GAT_Trained"
+            df.at[second_occurrence_idx, 'GAT_BL_Solution'] = "GAT_T_Solution"
+            df.at[third_occurrence_idx, 'GAT_Baseline'] = results_trained[result_idx][0]
+            df.at[third_occurrence_idx, 'GAT_BL_Solution'] = results_trained[result_idx][1]
             result_idx += 1
     else:
         print("Warning: The number of results does not match the number of unique instance IDs in the CSV file.")

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn import Linear, BatchNorm1d as BatchNorm
 from src_batch.encoder.EdgeGATConv import EdgeGATConv
 

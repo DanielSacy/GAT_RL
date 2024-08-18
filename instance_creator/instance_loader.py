@@ -13,16 +13,16 @@ def instance_loader(config, batch_size, save_to_csv):
     y = config[0]['num_instances']
 
     # Create the filename
-    filename = f'Nodes{x}_Instances{y}.csv'
+    filename = f'instances\\Nodes{x}_Instances{y}.csv'
     
     # Instantiate the InstanceGenerator class
-    generator = InstanceGenerator()
+    generator = InstanceGenerator(42)
     
     # Generate the instances based on the configuration
-    data_loader = generator.get_dataloader_memory(config, batch_size=1, save_to_csv=False, filename=filename)
+    data_loader = generator.get_dataloader_memory(config, batch_size, save_to_csv, filename=filename)
 
     if save_to_csv:
         logging.info(f"Saving instances to {filename}")      
-    logging.info(f"Data loader created with {len(data_loader)} instances")
+    logging.info(f"Data loader created with {len(data_loader)* batch_size} instances")
         
     return data_loader
