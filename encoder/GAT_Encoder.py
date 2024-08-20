@@ -8,22 +8,23 @@ from src_batch.encoder.EdgeGATConv import EdgeGATConv
 class ResidualEdgeGATEncoder(torch.nn.Module):
     """
     This class is a custom GAT encoder that includes batch normalization and a residual connection around the custom GAT layer."""
-    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout):
+    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout):
         super(ResidualEdgeGATEncoder, self).__init__()
         self.node_input_dim = node_input_dim
         self.edge_input_dim = edge_input_dim
         self.hidden_dim = hidden_dim
+        self.edge_dim = edge_dim
         self.layers = layers
         self.negative_slope = negative_slope
         self.dropout = dropout
         
         self.fc_node = Linear(node_input_dim, hidden_dim)
-        self.fc_edge = Linear(edge_input_dim, hidden_dim)
+        self.fc_edge = Linear(edge_input_dim, edge_dim)
         self.bn_node = BatchNorm(hidden_dim)
-        self.bn_edge = BatchNorm(hidden_dim)
+        self.bn_edge = BatchNorm(edge_dim)
 
         self.edge_gat_layers = torch.nn.ModuleList(
-            [EdgeGATConv(hidden_dim, hidden_dim, negative_slope, dropout) for _ in range(layers)]
+            [EdgeGATConv(hidden_dim, hidden_dim, edge_dim, negative_slope, dropout) for _ in range(layers)]
         )
         
         # Initialize the parameters of the encoder
@@ -53,6 +54,5 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         for edge_gat_layer in self.edge_gat_layers:
             x_next = edge_gat_layer(x, edge_index, edge_attr)
             x = x + x_next
-        
         x = x.reshape(batch_size, -1, self.hidden_dim) 
         return x # Shape of x: (batch_size, num_nodes, hidden_dim)

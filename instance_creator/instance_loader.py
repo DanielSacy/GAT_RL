@@ -26,3 +26,13 @@ def instance_loader(config, batch_size, save_to_csv):
     logging.info(f"Data loader created with {len(data_loader)* batch_size} instances")
         
     return data_loader
+
+if __name__ == '__main__':
+    config = [
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 10, 'num_instances': 100}
+    # Add more configurations as needed
+    ]
+    batch_size = 1
+    save_to_csv = True
+    instance_loader(config, batch_size, save_to_csv)
+    

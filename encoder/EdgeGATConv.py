@@ -1,7 +1,7 @@
 import torch
-from torch.nn import Linear, BatchNorm1d as BatchNorm, Sequential, ReLU
+from torch.nn import Linear, ReLU
 from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import softmax, scatter
+from torch_geometric.utils import softmax
 import torch.nn.functional as F
 
 # Custom GAT layer that includes edge features in the computation of attention coefficients.
@@ -10,16 +10,17 @@ class EdgeGATConv(MessagePassing):
     This class is a custom GAT layer that includes edge features in the computation of attention coefficients.
     It also uses multi-head attention to improve the performance of the model.
     """
-    def __init__(self, node_channels, hidden_dim, negative_slope, dropout, concat=True):
+    def __init__(self, node_channels, hidden_dim, edge_dim, negative_slope, dropout, concat=True):
         super(EdgeGATConv, self).__init__(aggr='add' if concat else 'mean') 
         self.node_channels = node_channels
-        self.hidden_dim = hidden_dim  # Number of output channels per head
+        self.hidden_dim = hidden_dim 
         self.negative_slope = negative_slope
         self.dropout = dropout
         self.concat = concat
         
         self.fc = torch.nn.Linear(node_channels, hidden_dim)
-        self.att_vector = torch.nn.Linear(hidden_dim * 3, hidden_dim)
+        self.att_vector = torch.nn.Linear(hidden_dim * 2 + edge_dim, hidden_dim)
+        # self.att_vector = torch.nn.Linear(hidden_dim * 3, hidden_dim)
         
         self.reset_parameters()
 

@@ -46,7 +46,7 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 
 def main():
     # Define paths
-    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\model_checkpoints_Exp6_180824\90\actor.pt"
+    model_path = r"actor.pt"
     # model_path = r"KunLei_actor.pt"
     data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
@@ -54,7 +54,8 @@ def main():
     #Params
     node_input_dim = 1
     edge_input_dim = 1
-    hidden_dim = 64
+    hidden_dim = 128
+    edge_dim = 64
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
@@ -64,7 +65,7 @@ def main():
     batch_size = 1
 
     # Instantiate the model
-    model = Model(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout).to(device)
+    model = Model(node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout).to(device)
 
     # Prepare the data
     data_loader = prepare_data(data_path, batch_size)

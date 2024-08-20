@@ -17,8 +17,8 @@ class GAT_Decoder(nn.Module):
 
         self.pointer = PointerAttention(8, input_dim, hidden_dim)
 
-        self.fc = nn.Linear(hidden_dim+1, hidden_dim)#, bias=False) # +1 to adjust for the concatenated capacity
-        self.fc1 = nn.Linear(hidden_dim, hidden_dim)#, bias=False)
+        self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False) # +1 to adjust for the concatenated capacity
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
     
         self.reset_parameters()
         
@@ -29,8 +29,8 @@ class GAT_Decoder(nn.Module):
         """
         nn.init.xavier_uniform_(self.fc.weight)
         nn.init.xavier_uniform_(self.fc1.weight)
-        nn.init.constant_(self.fc.bias, 0)
-        nn.init.constant_(self.fc1.bias, 0)
+        # nn.init.constant_(self.fc.bias, 0)
+        # nn.init.constant_(self.fc1.bias, 0)
         
     def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy):
         # encoder_inputs: (batch_size, n_nodes, hidden_dim)
@@ -108,5 +108,5 @@ class GAT_Decoder(nn.Module):
         depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
         actions = torch.cat([actions, depot_tensor], dim=1)
         log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
-
+        
         return actions, log_p

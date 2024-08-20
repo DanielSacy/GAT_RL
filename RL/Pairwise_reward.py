@@ -29,4 +29,4 @@ def pairwise_reward(actions, batch):
         rewards.append(route_distance)
 
     # Convert the rewards list to a tensor and return it
-    return torch.tensor(rewards, device=actions.device)
+    return torch.tensor(rewards, device=actions.device).detach()

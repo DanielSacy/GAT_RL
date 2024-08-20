@@ -5,9 +5,9 @@ from src_batch.decoder.GAT_Decoder import GAT_Decoder
 
 
 class Model(nn.Module):
-    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope,dropout):
+    def __init__(self, node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope,dropout):
         super(Model, self).__init__()
-        self.encoder = ResidualEdgeGATEncoder(node_input_dim, edge_input_dim, hidden_dim, layers, negative_slope, dropout)
+        self.encoder = ResidualEdgeGATEncoder(node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout)
         self.decoder = GAT_Decoder(hidden_dim, hidden_dim)
 
     def forward(self, data,  n_steps, greedy, T):

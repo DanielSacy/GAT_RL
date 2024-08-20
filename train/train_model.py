@@ -11,42 +11,39 @@ from src_batch.RL.Compute_Reward import compute_reward
 from src_batch.RL.Pairwise_reward import pairwise_reward
 from src_batch.RL.MST_baseline_instance import mst_baseline
 from src_batch.RL.MovingAvg_baseline import MovingAverageBaseline
+from src_batch.RL.Rollout_Baseline import RolloutBaseline, rollout
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 writer = SummaryWriter()
 
 def adv_normalize(adv):
     n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
     return n_advs
 
-def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
+def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
-    max_grad_norm = 5.0
+    max_grad_norm = 2.0
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
-    baseline = deepcopy(model).to(device)
-    # moving_avg_baseline = MovingAverageBaseline(beta=0.9)
+    # baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
     
     actor_optim = optim.Adam(actor.parameters(), lr)
     
     # Initialize an empty list to store results for pandas dataframe
     training_results = []
-    # min_reward_soFar = float('-inf')
-    # min_loss_soFar = float('inf')
     
     train_start = time.time()
     
     for epoch in range(num_epochs):
         print("epoch:", epoch, "------------------------------------------------")
         actor.train()
-        baseline.eval()
+        # baseline.eval()
         
         # Faster logging
         batch_size = len(data_loader)
         rewards = torch.zeros(batch_size, device=device)
-        BL_rewards = torch.zeros(batch_size, device=device)
+        rollout_reward = torch.zeros(batch_size, device=device)
         advantages = torch.zeros(batch_size, device=device)
         losses = torch.zeros(batch_size, device=device)
 
@@ -55,33 +52,45 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         
         epoch_start = time.time()
         for i, batch in enumerate(data_loader):
-            # Sent data to device when generating the data
             batch = batch.to(device)
             
             # Actor forward pass
             actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
-            # Append the depot {0} at the end of every route
-            # depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
-            # actions = torch.cat([actions, depot_tensor], dim=1)
             
-            # # Baseline forward pass
-            with torch.inference_mode():
-                BL_actions, _ = baseline(batch, n_steps, greedy=True, T=T)
-                # BL_actions = torch.cat([BL_actions, depot_tensor], dim=1)
+            #  Baseline forward pass
+            # with torch.inference_mode():
+            #     BL_actions, _ = baseline(batch, n_steps, greedy=True, T=T)
             
             # Compute reward and baseline
-            reward = pairwise_reward(actions.detach(), batch)
-            BL_reward = pairwise_reward(BL_actions.detach(), batch)
-            # avg_baseline = moving_avg_baseline.update(reward)
-            # mst_reward = mst_baseline(batch)
-
+            reward = pairwise_reward(actions, batch)
+            # rollout_reward = baseline.eval(batch, n_steps)
+            # BL_reward = pairwise_reward(BL_actions, batch)
+            
+            if i == 0:
+                critic_exp_mvg_avg = reward.mean()
+            else:
+                critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.9) + ((1. - 0.9) * reward.mean())
+            
             # Compute advantage
-            advantage = (reward - BL_reward)
-                
+            advantage = (reward - critic_exp_mvg_avg)
+                            
             # Whiten advantage    
             # advantage_norm = adv_normalize(advantage)
+            '''
+            Argmax is used to select the best action from the batch
             
-            # Backward pass
+            # Select the top-k advantages (largest=True since we're using negated advantages)
+            _, top_k_indices = torch.topk(advantage, top_k, largest=True)
+
+            # Select the top-k advantages and their corresponding log probabilities
+            selected_advantages = advantage[top_k_indices]
+            selected_tour_logp = tour_logp[top_k_indices]
+
+            # Compute REINFORCE loss using the selected advantages and log probabilities
+            reinforce_loss = torch.mean(selected_advantages.detach() * selected_tour_logp)
+            '''
+            
+            # Actor Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             actor_optim.zero_grad()
             reinforce_loss.backward()
@@ -94,24 +103,22 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(reward)
-            BL_rewards[i] = torch.mean(BL_reward)
+            # rollout_reward[i] = torch.mean(rollout_reward)
             advantages[i] = torch.mean(advantage)
             losses[i] = torch.mean(reinforce_loss)
-            # Update lists
-            # rewards.append(torch.mean(reward))
-            # BL_rewards.append(torch.mean(BL_reward))
-            # advantages.append(torch.mean(advantage))
-            # losses.append(torch.mean(reinforce_loss))
-            
+
+            # END OF EPOCH BLOCK CODE
+        
+        # Rollout baseline update
+        # baseline.epoch_callback(actor, epoch)
+          
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
-        mean_BL_rewards = torch.mean(BL_rewards).item()
+        mean_rollout_reward = torch.mean(rollout_reward).item()
         mean_advantage = torch.mean(advantages).item()
         mean_loss = torch.mean(losses).item()
 
         # Push losses and rewards to tensorboard
-        # if epoch % 30 == 0:
-        #     baseline = deepcopy(actor)
         if epoch % 10 == 0:
             writer.add_scalar('Loss/Train', mean_loss, epoch)
             writer.add_scalar('Reward', mean_reward, epoch)
@@ -123,13 +130,12 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         times.append(end - epoch_start)
         epoch_start = end
 
-        
         # Store the results for this epoch
         training_results.append({
             'epoch': epoch,
             'mean_reward': f'{mean_reward:.3f}',
             # 'MIN_REWARD': f'{min_reward_soFar:.3f}',
-            'mean_BL_rewards': f'{mean_BL_rewards:.3f}',
+            # 'mean_BL_rewards': f'{rollout_reward:.3f}',
             'mean_advantage': f'{mean_advantage:.3f}',
             ' ': ' ',
             'mean_loss': f'{mean_loss:.3f}',
@@ -143,7 +149,7 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         results_df = pd.DataFrame(training_results)
 
         # Save the results to a CSV file
-        results_df.to_csv('instances/model_checkpoints__.csv', index=False)
+        results_df.to_csv(f'instances/{folder}.csv', index=False)
 
         print(f'Epoch {epoch}, mean loss: {mean_loss:4f}, mean reward: {mean_reward}, mean_advantage: {mean_advantage}, time: {epoch_time:.2f}')
 

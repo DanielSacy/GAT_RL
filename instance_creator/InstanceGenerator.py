@@ -19,7 +19,7 @@ class InMemoryDataset(torch.utils.data.Dataset):
         return self.data_list[idx]
     
 class InstanceGenerator:
-    def __init__(self, n_customers=5, n_vehicles=4, max_demand=10, max_distance=20, random_seed=None):
+    def __init__(self, n_customers=5, n_vehicles=4, max_demand=10, max_distance=20, random_seed=42):
         self.n_customers = n_customers
         self.n_vehicles = n_vehicles
         self.max_demand = max_demand
@@ -57,16 +57,16 @@ class InstanceGenerator:
 
         Arcs = [(i, j) for i in N for j in N if i != j]  # Set of arcs between the nodes
 
-        # demand = {i: 0 if i not in No else np.random.randint(1, self.max_demand+1) for i in N} # Demand per customer
-        demand = {i: 0 if i not in No else np.random.uniform(0.1, self.max_demand/10) for i in N} # Demand per customer
+        demand = {i: 0 if i not in No else np.random.randint(1, self.max_demand+1) for i in N} # Demand per customer
+        # demand = {i: 0 if i not in No else np.random.uniform(0.1, self.max_demand/10) for i in N} # Demand per customer
 
         M = list(np.arange(1, self.n_vehicles + 1))  # Set of vehicles
 
-        load_capacity = 3.0  # Load capacity per vehicle
+        load_capacity = 90  # Load capacity per vehicle
         # load_capacity = 500  # For TSP simulation
 
-        distance = {(i, j): 0 if i == j else np.random.uniform(0.1, self.max_distance/10) for i in N for j in N}  # Distance between nodes
-        # distance =  {(i,j):(np.random.randint(1, self.max_distance+1)) for i,j in Arcs}
+        distance =  {(i,j):(np.random.randint(1, self.max_distance+1)) for i,j in Arcs}
+        # distance = {(i, j): 0 if i == j else np.random.uniform(0.1, self.max_distance/10) for i in N for j in N}  # Distance between nodes
         
         # Compute the distance matrix for MST computation and pairwise distance computation
         distance_matrix = np.zeros((len(N), len(N)))
@@ -110,8 +110,8 @@ class InstanceGenerator:
         
         # in_memory_dataset = InMemoryDataset(data_list)
         data_loader = DataLoader(data_list, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=0)
-        for dataset in data_loader:
-            print(f'dataset.x: {dataset.x}, dataset.edge_index: {dataset.edge_index}, dataset.edge_attr: {dataset.edge_attr}, dataset.demand: {dataset.demand}, dataset.capacity: {dataset.capacity}, dataset.mst_value: {dataset.mst_value}, dataset.mst_route: {dataset.mst_route}, dataset.distance_matrix: {dataset.distance_matrix}')
+        # for dataset in data_loader:
+            # print(f'dataset.x: {dataset.x}, dataset.edge_index: {dataset.edge_index}, dataset.edge_attr: {dataset.edge_attr}, dataset.demand: {dataset.demand}, dataset.capacity: {dataset.capacity}, dataset.mst_value: {dataset.mst_value}, dataset.mst_route: {dataset.mst_route}, dataset.distance_matrix: {dataset.distance_matrix}')
         return data_loader
 
     def generate_and_save_instances(self, data_list, filename):
@@ -121,9 +121,9 @@ class InstanceGenerator:
                 edge_indices = data.edge_index.numpy().T
                 edge_distances = data.edge_attr.numpy().flatten()
                 capacity = data.capacity.numpy()[0]
-                mst_value = data.mst_value.numpy()[0]
-                mst_route = data.mst_route.numpy()
-                distance_matrix = data.distance_matrix.numpy()
+                # mst_value = data.mst_value.numpy()[0]
+                # mst_route = data.mst_route.numpy()
+                # distance_matrix = data.distance_matrix.numpy()
 
 
                 instance_df = pd.DataFrame({
@@ -133,9 +133,9 @@ class InstanceGenerator:
                     'Distance': edge_distances,
                     'Demand': np.repeat(node_demands, len(edge_distances) // len(node_demands)),
                     'Capacity': np.repeat(capacity, len(edge_distances)),
-                    'MstValue': np.repeat(mst_value, len(edge_distances)),
-                    'MstRoute': np.repeat(mst_route, len(edge_distances) // len(mst_route), axis=0),
-                    'DistanceMatrix': distance_matrix.flatten()
+                    # 'MstValue': np.repeat(mst_value, len(edge_distances)),
+                    # 'MstRoute': np.repeat(mst_route, len(edge_distances) // len(mst_route), axis=0),
+                    # 'DistanceMatrix': distance_matrix.flatten()
                 })
 
                 all_instances.append(instance_df)
