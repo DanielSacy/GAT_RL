@@ -1,24 +1,19 @@
-from copy import deepcopy
+import datetime
 import pandas as pd
 import torch
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
-import numpy as np
 import os
 import time
+from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import LambdaLR
 
-from src_batch.RL.Compute_Reward import compute_reward
-from src_batch.RL.Pairwise_reward import pairwise_reward
-from src_batch.RL.MST_baseline_instance import mst_baseline
-from src_batch.RL.MovingAvg_baseline import MovingAverageBaseline
-from src_batch.RL.Rollout_Baseline import RolloutBaseline, rollout
+from ..RL.Pairwise_cost import pairwise_cost
+from ..RL.Rollout_Baseline import RolloutBaseline, rollout
+from utils import scale_to_range, scale_back, normalize
 
+now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter()
-
-def adv_normalize(adv):
-    n_advs = (adv - adv.mean()) / (adv.std() + 1e-8)
-    return n_advs
 
 def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
@@ -26,69 +21,63 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
-    # baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
+    baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
     
     actor_optim = optim.Adam(actor.parameters(), lr)
     
     # Initialize an empty list to store results for pandas dataframe
     training_results = []
-    
     train_start = time.time()
     
     for epoch in range(num_epochs):
         print("epoch:", epoch, "------------------------------------------------")
         actor.train()
-        # baseline.eval()
         
         # Faster logging
         batch_size = len(data_loader)
         rewards = torch.zeros(batch_size, device=device)
-        rollout_reward = torch.zeros(batch_size, device=device)
+        reward_back = torch.zeros(batch_size, device=device)
+        costs = torch.zeros(batch_size, device=device)
+        baselines = torch.zeros(batch_size, device=device)
         advantages = torch.zeros(batch_size, device=device)
         losses = torch.zeros(batch_size, device=device)
 
         times = []
-        # times, losses, rewards, BL_rewards, advantages, param_norms = [], [], [], [], [], []
         
         epoch_start = time.time()
+        
+        scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
             # Actor forward pass
             actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
             
-            #  Baseline forward pass
-            # with torch.inference_mode():
-            #     BL_actions, _ = baseline(batch, n_steps, greedy=True, T=T)
+            # REWARD
+            cost = pairwise_cost(actions.detach(), batch)
+            # 1-Normalize cost between 0 and 1
+            cost, min, max = scale_to_range(cost)
+            # 2-Sigmoitizar o cost
+            reward = cost
+            # reward = (cost.detach()-1)
             
-            # Compute reward and baseline
-            reward = pairwise_reward(actions, batch)
-            # rollout_reward = baseline.eval(batch, n_steps)
-            # BL_reward = pairwise_reward(BL_actions, batch)
-            
-            if i == 0:
-                critic_exp_mvg_avg = reward.mean()
-            else:
-                critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.9) + ((1. - 0.9) * reward.mean())
-            
-            # Compute advantage
-            advantage = (reward - critic_exp_mvg_avg)
-                            
+            '''BASELINE BLOCK'''        
+            # MST cost    
+            # mst_cost = batch.mst_value
+            # EXPONENTIAL MOVING AVERAGE
+            # if i == 0:
+            #     critic_exp_mvg_avg = reward.mean()
+            # else:
+            #     critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * reward.mean())
+            # ROLLOUT
+            rollout_cost = baseline.eval(batch, n_steps)
+            rollout_cost, _, _ = scale_to_range(rollout_cost)
+            rollout_reward = rollout_cost
+            # ADVANTAGE
+            advantage = (reward - rollout_reward)
             # Whiten advantage    
-            # advantage_norm = adv_normalize(advantage)
-            '''
-            Argmax is used to select the best action from the batch
-            
-            # Select the top-k advantages (largest=True since we're using negated advantages)
-            _, top_k_indices = torch.topk(advantage, top_k, largest=True)
-
-            # Select the top-k advantages and their corresponding log probabilities
-            selected_advantages = advantage[top_k_indices]
-            selected_tour_logp = tour_logp[top_k_indices]
-
-            # Compute REINFORCE loss using the selected advantages and log probabilities
-            reinforce_loss = torch.mean(selected_advantages.detach() * selected_tour_logp)
-            '''
+            # advantage_norm = normalize(advantage)
+            '''BASELINE BLOCK'''            
             
             # Actor Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
@@ -100,10 +89,14 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
                      
             # Update the actor
             actor_optim.step()
+            scheduler.step()
 
+            reward_back = scale_back(reward, min, max)
             # Update the pre-allocated tensors
-            rewards[i] = torch.mean(reward)
-            # rollout_reward[i] = torch.mean(rollout_reward)
+            rewards[i] = torch.mean(reward_back)
+            reward_back = torch.mean(reward_back)
+            costs[i] = torch.mean(cost)
+            baselines[i] = torch.mean(rollout_reward)
             advantages[i] = torch.mean(advantage)
             losses[i] = torch.mean(reinforce_loss)
 
@@ -114,7 +107,9 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
           
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
-        mean_rollout_reward = torch.mean(rollout_reward).item()
+        mean_reward_back = torch.mean(reward_back).item()
+        mean_cost = torch.mean(costs).item()
+        mean_baseline = torch.mean(baselines).item()
         mean_advantage = torch.mean(advantages).item()
         mean_loss = torch.mean(losses).item()
 
@@ -135,7 +130,7 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             'epoch': epoch,
             'mean_reward': f'{mean_reward:.3f}',
             # 'MIN_REWARD': f'{min_reward_soFar:.3f}',
-            # 'mean_BL_rewards': f'{rollout_reward:.3f}',
+            'mean_baseline': f'{mean_baseline:.3f}',
             'mean_advantage': f'{mean_advantage:.3f}',
             ' ': ' ',
             'mean_loss': f'{mean_loss:.3f}',
@@ -149,9 +144,10 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
         results_df = pd.DataFrame(training_results)
 
         # Save the results to a CSV file
-        results_df.to_csv(f'instances/{folder}.csv', index=False)
+        results_df.to_csv(f'instances/{now}h.csv', index=False)
 
-        print(f'Epoch {epoch}, mean loss: {mean_loss:4f}, mean reward: {mean_reward}, mean_advantage: {mean_advantage}, time: {epoch_time:.2f}')
+        # print(f'Epoch {epoch}, mean loss: {mean_loss:.2f}, mean reward: {mean_reward:.2f}, time: {epoch_time:.2f}')
+        print(f'Epoch {epoch}, mean loss: {mean_loss:.3f}, mean reward: {mean_reward:.3f}, mean_baseline: {mean_baseline:.3f}, mean_advantage: {mean_advantage:.3f}, mean_cost: {mean_cost:.3f}, reward_back: {mean_reward_back:.3f}, time: {epoch_time:.2f}')
 
         # Save if the Loss is less than the minimum so far
         epoch_dir = os.path.join(folder, '%s' % epoch)

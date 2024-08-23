@@ -45,7 +45,7 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         """This function computes the node, edge, and graph embeddings."""
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
         batch_size = batch.max() + 1
-
+        
         # Node and edge embedding
         x = self.bn_node(self.fc_node(x))
         edge_attr = self.bn_edge(self.fc_edge(edge_attr))

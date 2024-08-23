@@ -1,9 +1,9 @@
 import time
+import datetime
 import torch
 import os
 import logging
 from torch.profiler import profile, record_function, ProfilerActivity
-
 
 from src_batch.model.Model import Model
 from src_batch.train.train_model import train
@@ -18,33 +18,36 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 logging.info(f"Running on device: {device}")
 
 def main_train():
-    logging.info("Starting training pipeline")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H")
+    logging.info(f"Starting training pipeline: {now}h")
     # Define the folder and filename for the model checkpoints
-    # folder = 'model_checkpoints_2' # Best model so far
-    folder = 'model_checkpoints__'
+    # folder = 'model_checkpoints__'
+    folder = f'checkpoints\\model_checkpoints_{now}h'
     filename = 'actor.pt'
 
     # Create dataset
     '''TRAIN'''
-    # train_dataset = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\train\train_20_50000.CSV"
+    # train_dataset = 
     
     # Define the configurations for the instances
     config = [
-    {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 100000}
+    # {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 100000}
+    {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 2}
     # Add more configurations as needed
     ]
     valid_config = [
-    {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1000}
+    # {'n_customers': 1, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1}
+     {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1000}
     # Add more configurations as needed
     ]
     # Create dataloaders
     # Sending the data to the device when generating the data
     start_to_load = time.time()
     logging.info("Creating dataloaders")
-    batch_size = 500
+    batch_size = 100
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
-    valid_batch_size = 20
+    valid_batch_size = 100
     valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
     end_of_load = time.time()
     logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
@@ -54,7 +57,7 @@ def main_train():
         os.makedirs(folder)
     
     # Model parameters
-    node_input_dim = 1
+    node_input_dim = 3
     edge_input_dim = 1
     hidden_dim = 128
     edge_dim = 64
@@ -62,7 +65,7 @@ def main_train():
     negative_slope = 0.2
     dropout = 0.6
     n_steps = 100
-    lr = 1e-4
+    lr = 1e-3
     # greedy = False
     T = 2.5 #1.0
 

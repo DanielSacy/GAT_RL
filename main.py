@@ -6,7 +6,7 @@ from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
 from src_batch.model.Model import Model
 
 from RL.Compute_Reward import compute_reward
-from RL.Pairwise_reward import pairwise_reward
+from RL.Pairwise_cost import pairwise_cost
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,17 +30,19 @@ def run_inference(model, data_loader, n_steps, greedy, T):
             actions, tour_logp = model(batch, n_steps, greedy, T)
             print("Tour Log Probabilities: ", tour_logp)
             
-            # Adding the depot {0} at the end of every route
-            depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
-            actions = torch.cat([actions, depot_tensor], dim=1)
-            print("Actions: ", actions)
             
             # Convert actions tensor to list
             actions_list = actions.cpu().numpy().tolist()
             actions_str = ','.join(map(str, actions_list))
             
             # Get the reward value for the batch
-            reward = compute_reward(actions, batch)
+            reward = pairwise_cost(actions, batch)
+            
+            # Adding the depot {0} at the end of every route
+            depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
+            actions = torch.cat([depot_tensor, actions, depot_tensor], dim=1)
+            print("Actions: ", actions)
+            
             results.append((reward.item(), actions_str))
     return results
 
@@ -48,11 +50,11 @@ def main():
     # Define paths
     model_path = r"actor.pt"
     # model_path = r"KunLei_actor.pt"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\val_10_100.CSV"
-    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\debug_4_2instances.CSV"
+    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100_EUCLIDEAN.csv"
     
     #Params
-    node_input_dim = 1
+    node_input_dim = 3
     edge_input_dim = 1
     hidden_dim = 128
     edge_dim = 64
@@ -85,15 +87,17 @@ def main():
         result_idx = 0
         for instance_id in df['InstanceID'].unique():
             first_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[0]
-            second_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[1]
-            third_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[2]
+            # second_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[1]
+            # third_occurrence_idx = df.index[df['InstanceID'] == instance_id].tolist()[2]
             
             df.at[first_occurrence_idx, 'GAT_Baseline'] = results_baseline[result_idx][0]
             df.at[first_occurrence_idx, 'GAT_BL_Solution'] = results_baseline[result_idx][1]
-            df.at[second_occurrence_idx, 'GAT_Baseline'] = "GAT_Trained"
-            df.at[second_occurrence_idx, 'GAT_BL_Solution'] = "GAT_T_Solution"
-            df.at[third_occurrence_idx, 'GAT_Baseline'] = results_trained[result_idx][0]
-            df.at[third_occurrence_idx, 'GAT_BL_Solution'] = results_trained[result_idx][1]
+            df.at[first_occurrence_idx, 'GAT_Trained'] = results_trained[result_idx][0]
+            df.at[first_occurrence_idx, 'GAT_Trained_Solution'] = results_trained[result_idx][1]
+            # df.at[second_occurrence_idx, 'GAT_Baseline'] = "GAT_Trained"
+            # df.at[second_occurrence_idx, 'GAT_BL_Solution'] = "GAT_T_Solution"
+            # df.at[third_occurrence_idx, 'GAT_Baseline'] = results_trained[result_idx][0]
+            # df.at[third_occurrence_idx, 'GAT_BL_Solution'] = results_trained[result_idx][1]
             result_idx += 1
     else:
         print("Warning: The number of results does not match the number of unique instance IDs in the CSV file.")
