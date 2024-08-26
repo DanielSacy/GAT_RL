@@ -31,23 +31,23 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    # {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 100000}
-    {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 2}
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 307200}
+    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 1}
     # Add more configurations as needed
     ]
     valid_config = [
-    # {'n_customers': 1, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1}
-     {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1000}
+    # {'n_customers': 4, 'max_demand': 30, 'max_distance': 40, 'num_instances': 5}
+     {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1280}
     # Add more configurations as needed
     ]
     # Create dataloaders
     # Sending the data to the device when generating the data
     start_to_load = time.time()
     logging.info("Creating dataloaders")
-    batch_size = 100
+    batch_size = 256
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
-    valid_batch_size = 100
+    valid_batch_size = 128
     valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
     end_of_load = time.time()
     logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
@@ -60,12 +60,12 @@ def main_train():
     node_input_dim = 3
     edge_input_dim = 1
     hidden_dim = 128
-    edge_dim = 64
+    edge_dim = 16
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
     n_steps = 100
-    lr = 1e-3
+    lr = 1e-4
     # greedy = False
     T = 2.5 #1.0
 

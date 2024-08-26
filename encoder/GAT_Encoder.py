@@ -27,17 +27,17 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
             [EdgeGATConv(hidden_dim, hidden_dim, edge_dim, negative_slope, dropout) for _ in range(layers)]
         )
         
-        # Initialize the parameters of the encoder
-        # EdgeGAT layers are initialized in the EdgeGATConv class
-        self.reset_parameters()
+        self.initialize_weights()
 
-    def reset_parameters(self):
+    def initialize_weights(self):
         """
         This function initializes the parameters of the encoder.
         """
-        torch.nn.init.xavier_uniform_(self.fc_node.weight)
-        torch.nn.init.xavier_uniform_(self.fc_edge.weight)
-        torch.nn.init.constant_(self.fc_node.bias, 0)
+        for name, param in self.named_parameters():
+            if param.dim() > 1:  # Typically applies to weight matrices
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:  # Check if it's a bias term
+                nn.init.constant_(param, 0)  # Initialize biases to zero
         torch.nn.init.constant_(self.fc_edge.bias, 0)
             
         

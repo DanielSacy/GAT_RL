@@ -39,17 +39,18 @@ class TransformerAttention(nn.Module):
         self.v = nn.Linear(input_dim, hidden_dim, bias=False)
         self.fc = nn.Linear(hidden_dim, hidden_dim, bias=False)
 
-        self.reset_parameters()
-    
-    def reset_parameters(self):
+        self.initialize_weights()
+
+    def initialize_weights(self):
         """
-        This function initializes the parameters of the attention layer.
+        This function initializes the parameters of the encoder.
         It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
         """
-        nn.init.xavier_uniform_(self.w.weight)
-        nn.init.xavier_uniform_(self.k.weight)
-        nn.init.xavier_uniform_(self.v.weight)
-        nn.init.xavier_uniform_(self.fc.weight)
+        for name, param in self.named_parameters():
+            if param.dim() > 1:  # Typically applies to weight matrices
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:  # Check if it's a bias term
+                nn.init.constant_(param, 0)  # Initialize biases to zero
 
     def forward(self, state_t, context, mask):
         """
@@ -82,7 +83,7 @@ class TransformerAttention(nn.Module):
         mask = mask.unsqueeze(1).expand_as(compatibility)
         u_i = compatibility.masked_fill(mask.bool(), float("-inf"))
 
-        # Compute attention scores and apply dropout to better generalize
+        # Compute attention scores
         scores = F.softmax(u_i, dim=-1)  # (batch_size,n_heads,n_nodes)
         scores = scores.unsqueeze(2)
         

@@ -1,5 +1,5 @@
 import torch
-from torch.nn import Linear, ReLU
+import torch.nn as nn
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import softmax
 import torch.nn.functional as F
@@ -22,16 +22,17 @@ class EdgeGATConv(MessagePassing):
         self.att_vector = torch.nn.Linear(hidden_dim * 2 + edge_dim, hidden_dim)
         # self.att_vector = torch.nn.Linear(hidden_dim * 3, hidden_dim)
         
-        self.reset_parameters()
+        self.initialize_weights()
 
-    def reset_parameters(self):
+    def initialize_weights(self):
         """
         This function initializes the parameters of the encoder.
         """
-        torch.nn.init.xavier_uniform_(self.fc.weight)
-        torch.nn.init.xavier_uniform_(self.att_vector.weight)
-        torch.nn.init.constant_(self.fc.bias, 0)
-        torch.nn.init.constant_(self.att_vector.bias, 0)
+        for name, param in self.named_parameters():
+            if param.dim() > 1:  # Typically applies to weight matrices
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:  # Check if it's a bias term
+                nn.init.constant_(param, 0)  # Initialize biases to zero
         
     def forward(self, x, edge_index, edge_attr, size=None):
         """This function computes the node embeddings."""

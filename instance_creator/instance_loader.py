@@ -30,10 +30,10 @@ def instance_loader(config, batch_size, save_to_csv):
 if __name__ == '__main__':
     config = [
     # {'n_customers': 3, 'max_demand': 30, 'max_distance': 40, 'num_instances': 2}
-    {'n_customers': 10, 'max_demand': 30, 'max_distance': 40, 'num_instances': 100}
+    {'n_customers': 5, 'max_demand': 10, 'max_distance': 40, 'num_instances': 1}
     # Add more configurations as needed
     ]
     batch_size = 1
-    save_to_csv = True
+    save_to_csv = False
     instance_loader(config, batch_size, save_to_csv)
     

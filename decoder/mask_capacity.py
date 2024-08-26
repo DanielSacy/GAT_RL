@@ -4,15 +4,15 @@ def update_mask(demand,capacity,selected,mask,i):
     go_depot = selected.squeeze(-1).eq(0)
     mask1 = mask.scatter(1, selected.expand(mask.size(0), -1), 1)
 
-    # if (~go_depot).any():
-    #     mask1[(~go_depot).nonzero(),0] = 0
+    if (~go_depot).any():
+        mask1[(~go_depot).nonzero(),0] = 0
 
     # This condition checks if there are any nodes the vehicle cannot serve due to capacity constraints
-    cannot_serve_any = (demand * (1 - mask1)).max(dim=1)[0] > capacity.squeeze(-1)
+    # cannot_serve_any = (demand * (1 - mask1)).max(dim=1)[0] > capacity.squeeze(-1)
     
-    if cannot_serve_any.any():
-        mask1[(~go_depot).nonzero(),0] = 0
-        mask1[torch.logical_not(go_depot), 0] = 0
+    # if cannot_serve_any.any():
+    #     mask1[(~go_depot).nonzero(),0] = 0
+    #     mask1[torch.logical_not(go_depot), 0] = 0
 
     if i+1>demand.size(1):
     # if (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():

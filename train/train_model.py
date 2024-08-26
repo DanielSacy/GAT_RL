@@ -21,7 +21,7 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
-    baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
+    # baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
     
     actor_optim = optim.Adam(actor.parameters(), lr)
     
@@ -36,17 +36,15 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
         # Faster logging
         batch_size = len(data_loader)
         rewards = torch.zeros(batch_size, device=device)
-        reward_back = torch.zeros(batch_size, device=device)
-        costs = torch.zeros(batch_size, device=device)
         baselines = torch.zeros(batch_size, device=device)
         advantages = torch.zeros(batch_size, device=device)
         losses = torch.zeros(batch_size, device=device)
+        parameters = torch.zeros(batch_size, device=device)
 
         times = []
-        
         epoch_start = time.time()
         
-        scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
+        # scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
@@ -54,52 +52,54 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
             
             # REWARD
+            # Track or not the gradients of the reward
+            # reward = pairwise_cost(actions, batch)
             cost = pairwise_cost(actions.detach(), batch)
-            # 1-Normalize cost between 0 and 1
-            cost, min, max = scale_to_range(cost)
-            # 2-Sigmoitizar o cost
-            reward = cost
-            # reward = (cost.detach()-1)
             
             '''BASELINE BLOCK'''        
-            # MST cost    
-            # mst_cost = batch.mst_value
             # EXPONENTIAL MOVING AVERAGE
-            # if i == 0:
-            #     critic_exp_mvg_avg = reward.mean()
-            # else:
-            #     critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * reward.mean())
+            # Put it in inference mode?
+            if i == 0:
+                critic_exp_mvg_avg = cost.mean()
+            else:
+                critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * cost.mean())
+            
             # ROLLOUT
-            rollout_cost = baseline.eval(batch, n_steps)
-            rollout_cost, _, _ = scale_to_range(rollout_cost)
-            rollout_reward = rollout_cost
-            # ADVANTAGE
-            advantage = (reward - rollout_reward)
-            # Whiten advantage    
-            # advantage_norm = normalize(advantage)
+            # rollout_cost = baseline.eval(batch, n_steps)
+            # rollout_reward = -rollout_cost
             '''BASELINE BLOCK'''            
+            
+            # ADVANTAGE
+            advantage = (cost - critic_exp_mvg_avg.detach())
+            # advantage = 5 * torch.tanh(advantage)
             
             # Actor Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             actor_optim.zero_grad()
             reinforce_loss.backward()
             
+            # Log the gradient norms
+            total_grad_norm = 0
+            for param in actor.parameters():
+                if param.grad is not None:
+                    param_norm = param.grad.data.norm(2)  # L2 norm of gradients
+                    total_grad_norm += param_norm.item() ** 2
+            total_grad_norm = total_grad_norm ** 0.5  # Final total L2 norm of all gradients
+            
             # Clip helps with the exploding and vanishing gradient problem
             torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
-                     
+            
             # Update the actor
             actor_optim.step()
-            scheduler.step()
+            # scheduler.step()
 
-            reward_back = scale_back(reward, min, max)
             # Update the pre-allocated tensors
-            rewards[i] = torch.mean(reward_back)
-            reward_back = torch.mean(reward_back)
-            costs[i] = torch.mean(cost)
-            baselines[i] = torch.mean(rollout_reward)
-            advantages[i] = torch.mean(advantage)
-            losses[i] = torch.mean(reinforce_loss)
-
+            rewards[i] = torch.mean(cost.detach())
+            baselines[i] = torch.mean(critic_exp_mvg_avg.detach())
+            advantages[i] = torch.mean(advantage.detach())
+            losses[i] = torch.mean(reinforce_loss.detach())
+            parameters[i] = total_grad_norm
+            
             # END OF EPOCH BLOCK CODE
         
         # Rollout baseline update
@@ -107,16 +107,15 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
           
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
-        mean_reward_back = torch.mean(reward_back).item()
-        mean_cost = torch.mean(costs).item()
         mean_baseline = torch.mean(baselines).item()
         mean_advantage = torch.mean(advantages).item()
         mean_loss = torch.mean(losses).item()
+        mean_parameters = torch.mean(parameters).item()
 
         # Push losses and rewards to tensorboard
-        if epoch % 10 == 0:
-            writer.add_scalar('Loss/Train', mean_loss, epoch)
-            writer.add_scalar('Reward', mean_reward, epoch)
+        writer.add_scalar('Loss/Train', mean_loss, epoch)
+        writer.add_scalar('Reward', mean_reward, epoch)
+        writer.add_scalar('Gradients/Total_Grad_Norm', mean_parameters, epoch)
         
     
         # Print epoch Time
@@ -147,7 +146,7 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
         results_df.to_csv(f'instances/{now}h.csv', index=False)
 
         # print(f'Epoch {epoch}, mean loss: {mean_loss:.2f}, mean reward: {mean_reward:.2f}, time: {epoch_time:.2f}')
-        print(f'Epoch {epoch}, mean loss: {mean_loss:.3f}, mean reward: {mean_reward:.3f}, mean_baseline: {mean_baseline:.3f}, mean_advantage: {mean_advantage:.3f}, mean_cost: {mean_cost:.3f}, reward_back: {mean_reward_back:.3f}, time: {epoch_time:.2f}')
+        print(f'Epoch {epoch}, mean loss: {mean_loss:.3f}, mean reward: {mean_reward:.3f}, mean_baseline: {mean_baseline:.3f}, mean_advantage: {mean_advantage:.3f}, time: {epoch_time:.2f}')
 
         # Save if the Loss is less than the minimum so far
         epoch_dir = os.path.join(folder, '%s' % epoch)

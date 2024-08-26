@@ -20,17 +20,18 @@ class GAT_Decoder(nn.Module):
         self.fc = nn.Linear(hidden_dim+1, hidden_dim, bias=False) # +1 to adjust for the concatenated capacity
         self.fc1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
     
-        self.reset_parameters()
-        
-    def reset_parameters(self):
+        self.initialize_weights()
+
+    def initialize_weights(self):
         """
-        This function initializes the parameters of the attention layer.
+        This function initializes the parameters of the encoder.
         It's using the Xavier initialization over Orthogonal initialization because it's more suitable for the ReLU activation function applied to the output of the attention layer.
         """
-        nn.init.xavier_uniform_(self.fc.weight)
-        nn.init.xavier_uniform_(self.fc1.weight)
-        # nn.init.constant_(self.fc.bias, 0)
-        # nn.init.constant_(self.fc1.bias, 0)
+        for name, param in self.named_parameters():
+            if param.dim() > 1:  # Typically applies to weight matrices
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:  # Check if it's a bias term
+                nn.init.constant_(param, 0)  # Initialize biases to zero
         
     def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy):
         # encoder_inputs: (batch_size, n_nodes, hidden_dim)
@@ -85,8 +86,8 @@ class GAT_Decoder(nn.Module):
                 _, index = p.max(dim=-1)
             else:
                 index = dist.sample()
-                
-            actions.append(index.data.unsqueeze(1))            
+            
+            actions.append(index.data.unsqueeze(1))
             log_p = dist.log_prob(index)
             is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
             log_p = log_p * (1. - is_done)
@@ -101,13 +102,9 @@ class GAT_Decoder(nn.Module):
                                   index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
                                   ).squeeze(1)
             
-            # i+=1
-        
         # Concatenate the actions and log probabilities
         log_ps = torch.cat(log_ps, dim=1)
         actions = torch.cat(actions, dim=1)
-        # depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
-        # actions = torch.cat([actions, depot_tensor], dim=1)
         log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
-        
+
         return actions, log_p

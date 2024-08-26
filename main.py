@@ -30,11 +30,6 @@ def run_inference(model, data_loader, n_steps, greedy, T):
             actions, tour_logp = model(batch, n_steps, greedy, T)
             print("Tour Log Probabilities: ", tour_logp)
             
-            
-            # Convert actions tensor to list
-            actions_list = actions.cpu().numpy().tolist()
-            actions_str = ','.join(map(str, actions_list))
-            
             # Get the reward value for the batch
             reward = pairwise_cost(actions, batch)
             
@@ -42,6 +37,9 @@ def run_inference(model, data_loader, n_steps, greedy, T):
             depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
             actions = torch.cat([depot_tensor, actions, depot_tensor], dim=1)
             print("Actions: ", actions)
+            # Convert actions tensor to list
+            actions_list = actions.cpu().numpy().tolist()
+            actions_str = ','.join(map(str, actions_list))
             
             results.append((reward.item(), actions_str))
     return results
@@ -50,14 +48,14 @@ def main():
     # Define paths
     model_path = r"actor.pt"
     # model_path = r"KunLei_actor.pt"
-    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100.csv"
+    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
     data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100_EUCLIDEAN.csv"
     
     #Params
     node_input_dim = 3
     edge_input_dim = 1
     hidden_dim = 128
-    edge_dim = 64
+    edge_dim = 16
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
