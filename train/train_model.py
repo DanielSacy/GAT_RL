@@ -16,7 +16,7 @@ writer = SummaryWriter()
 def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 2.0
-    num_samples = 4
+    num_samples = 8
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
