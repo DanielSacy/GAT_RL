@@ -16,7 +16,7 @@ def instance_loader(config, batch_size, save_to_csv):
     filename = f'instances\\Nodes{x}_Instances{y}_EUCLIDEAN.csv'
     
     # Instantiate the InstanceGenerator class
-    generator = InstanceGenerator(random_seed=42)   
+    generator = InstanceGenerator(random_seed=100)   
     
     # Generate the instances based on the configuration
     data_loader = generator.get_dataloader_memory(config, batch_size, save_to_csv, filename=filename)
@@ -30,10 +30,10 @@ def instance_loader(config, batch_size, save_to_csv):
 if __name__ == '__main__':
     config = [
     # {'n_customers': 3, 'max_demand': 30, 'max_distance': 40, 'num_instances': 2}
-    {'n_customers': 5, 'max_demand': 10, 'max_distance': 40, 'num_instances': 1}
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 100}
     # Add more configurations as needed
     ]
     batch_size = 1
-    save_to_csv = False
+    save_to_csv = True
     instance_loader(config, batch_size, save_to_csv)
     

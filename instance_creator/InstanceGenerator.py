@@ -49,7 +49,7 @@ class InstanceGenerator:
         ''''''
         # GOING EUCLIDEAN
         # coordinates = {i: np.random.randint(0, self.max_distance+1, size=2) for i in N}
-        coordinates = {i: np.random.randint(0, self.max_distance+1, size=2)/100 for i in N}
+        coordinates = {i: np.random.randint(0, self.max_distance, size=2)/100 for i in N}
         
         # Create the distance matrix using Euclidean distance
         distance = {(i, j): 0 if i == j else InstanceGenerator.euclidean_distance(coordinates[i], coordinates[j]) for i in N for j in N}
@@ -117,25 +117,20 @@ class InstanceGenerator:
     def generate_and_save_instances(self, data_list, filename):
         all_instances = []
         for instance_num, data in enumerate(data_list, start=1):
-            node_features = data.x.numpy().tolist()
+            node_features = data.x.numpy()
             node_demands = data.demand.numpy().flatten()
             edge_indices = data.edge_index.numpy().T
             edge_distances = data.edge_attr.numpy().flatten()
             capacity = data.capacity.numpy()[0]
+            distance_matrix = data.distance_matrix.numpy()
             # mst_value = data.mst_value.numpy()[0]
             # mst_route = data.mst_route.numpy()
-            distance_matrix = data.distance_matrix.numpy()
             
-                    # Serialize all data using json.dumps
+            # Serialize all data using json.dumps
             serialized_capacity = json.dumps(capacity.tolist())
             # serialized_mst_value = json.dumps(mst_value.tolist())
             # serialized_mst_route = json.dumps(mst_route.tolist())
-            serialized_distance_matrix = json.dumps(distance_matrix.tolist())
-
-
-            # Serialize the distance matrix and MST route to a JSON-compatible format (string)
-            serialized_distance_matrix = json.dumps(distance_matrix.tolist())
-            # serialized_mst_route = json.dumps(mst_route.tolist())
+            # serialized_distance_matrix = json.dumps(distance_matrix.tolist())
 
             instance_df = pd.DataFrame({
                 'InstanceID': f'{self.n_customers}_{instance_num}',
@@ -151,10 +146,10 @@ class InstanceGenerator:
             })
 
             # Insert the serialized values in the first row
-            # instance_df.at[0, 'MstRoute'] = serialized_mst_route
-            instance_df.at[0, 'DistanceMatrix'] = serialized_distance_matrix
-            # instance_df.at[0, 'MstValue'] = serialized_mst_value
             instance_df.at[0, 'Capacity'] = serialized_capacity
+            instance_df.at[0, 'DistanceMatrix'] = distance_matrix
+            # instance_df.at[0, 'MstValue'] = serialized_mst_value
+            # instance_df.at[0, 'MstRoute'] = serialized_mst_route
 
             all_instances.append(instance_df)
 

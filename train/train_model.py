@@ -76,7 +76,7 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(cost.detach())
-            losses[i] = total_loss.detach()
+            losses[i] = surrogate_loss.detach()
             
             # END OF EPOCH BLOCK CODE
         

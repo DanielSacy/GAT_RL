@@ -50,7 +50,7 @@ def main():
     model_path = r"actor.pt"
     # model_path = r"KunLei_actor.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100_EUCLIDEAN.csv"
     
     #Params
     node_input_dim = 3
