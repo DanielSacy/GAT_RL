@@ -38,7 +38,7 @@ def pairwise_cost(actions, batch):
     total_distances = total_route + depot_penalty
 
     # Return the negative route distances as rewards (cost minimization problem)
-    return -total_distances
+    return total_distances
 
 # import itertools
 

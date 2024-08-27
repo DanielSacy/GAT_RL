@@ -47,32 +47,24 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Compute REWARD for each sample
             costs_list = []
-            surrogate_losses = []
             for sample_idx in range(num_samples):
                 actions = actions_list[sample_idx]
                 cost = pairwise_cost(actions, batch)
                 costs_list.append(cost)
-                # Convert cost to reward
-                # reward = -cost
-                
-                # Compute DiCE Surrogate Loss
-                surrogate_loss = dice.cost_node(cost, [log_ps_list[sample_idx]])
-                surrogate_losses.append(surrogate_loss)
-                
-                # Compute Baseline Term using REINFORCE with replacement for this sample
-                baseline_term = dice.batch_baseline_term(surrogate_loss, [log_ps_list[sample_idx]])
-                
-                # Add the baseline term to the surrogate loss for this sample
-                surrogate_losses[sample_idx] = surrogate_loss + baseline_term       
 
-            # Stack the costs and surrogate losses
-            surrogate_loss_stack = torch.stack(surrogate_losses, dim=1)
-            # Combine surrogate loss and baseline term
-            total_loss = surrogate_loss_stack.mean() # Mean over the samples
-            
+            # Stack the costs for the different samples
+            costs_stack = torch.stack(costs_list, dim=1)  # Shape: [batch_size, num_samples]
+
+            # Calculate the advantage as the difference between cost and the mean of all samples
+            adv = (costs_stack - costs_stack.mean(dim=1, keepdim=True)) * (num_samples / (num_samples - 1))
+
+            # Compute the surrogate loss with the advantage and log probabilities
+            # Add the costs in case there is a direct dependency on the parameters
+            surrogate_loss = -(adv.detach() * torch.stack(log_ps_list, dim=1) + costs_stack).mean()
+
             # Actor Backward pass
             actor_optim.zero_grad()
-            total_loss.backward()
+            surrogate_loss.backward()
             
             # Clip helps with the exploding and vanishing gradient problem
             # torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
