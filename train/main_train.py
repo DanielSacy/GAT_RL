@@ -31,24 +31,22 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 307200}
-    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 1}
-    # Add more configurations as needed
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 128000}
+    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 12}
     ]
-    valid_config = [
+    # valid_config = [
     # {'n_customers': 4, 'max_demand': 30, 'max_distance': 40, 'num_instances': 5}
-     {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1280}
-    # Add more configurations as needed
-    ]
+    # #  {'n_customers': 20, 'max_demand': 30, 'max_distance': 40, 'num_instances': 1280}
+    # ]
     # Create dataloaders
     # Sending the data to the device when generating the data
     start_to_load = time.time()
     logging.info("Creating dataloaders")
-    batch_size = 256
+    batch_size = 128
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
-    valid_batch_size = 128
-    valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
+    # valid_batch_size = 5
+    # valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
     end_of_load = time.time()
     logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
     
@@ -72,12 +70,10 @@ def main_train():
     num_epochs = 100
     
     logging.info("Instantiating the model")
-    # Instantiate the Model and the RolloutBaseline
     model = Model(node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout)
     
     logging.info("Calling the train function")
-    # Call the train function
-    train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T)
+    train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
     #     with record_function("model_inference"):
     #         train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)

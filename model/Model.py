@@ -10,7 +10,7 @@ class Model(nn.Module):
         self.encoder = ResidualEdgeGATEncoder(node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout)
         self.decoder = GAT_Decoder(hidden_dim, hidden_dim)
 
-    def forward(self, data,  n_steps, greedy, T):
+    def forward(self, data,  n_steps, greedy, T, num_samples=4):
         # data.x: node features, data.edge_attr: edge features, data.edge_index: edge indices
         x = self.encoder(data)  # Shape of x: (n_nodes, hidden_dim) 
         # Compute the graph embedding > mean of all node embeddings per feature dimension
@@ -22,6 +22,6 @@ class Model(nn.Module):
         capacity = data.capacity.reshape(batch_size, -1).float().to(data.x.device)
         
         # Call the decoder
-        actions, log_p = self.decoder(x, graph_embedding, capacity, demand, n_steps,T, greedy)
+        actions_list, log_ps_list = self.decoder(x, graph_embedding, capacity, demand, n_steps,T, greedy, num_samples)
         
-        return actions, log_p
+        return actions_list, log_ps_list

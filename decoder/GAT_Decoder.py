@@ -33,78 +33,79 @@ class GAT_Decoder(nn.Module):
             elif 'bias' in name:  # Check if it's a bias term
                 nn.init.constant_(param, 0)  # Initialize biases to zero
         
-    def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy):
+    def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy, num_samples=4):
         # encoder_inputs: (batch_size, n_nodes, hidden_dim)
-        device = encoder_inputs.device # to ensure the tensors are on the same device
+        device = encoder_inputs.device  # to ensure the tensors are on the same device
 
         batch_size = encoder_inputs.size(0)  # Indicates the number of graphs in the batch
-        seq_len = encoder_inputs.size(1)    # Feature dimension
+        seq_len = encoder_inputs.size(1)  # Feature dimension
+
+        log_ps_list = []  # To hold multiple sampled log-probs for each sample
+        actions_list = []  # To hold multiple sampled actions for each sample
+
+        for _ in range(num_samples):
+            mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+            mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+            dynamic_capacity = capacity.expand(batch_size, -1).to(device)
+            demands = demand.to(device)
+            index = torch.zeros(batch_size, dtype=torch.long, device=device)
+            log_ps = []
+            actions = []    # encoder_inputs: (batch_size, n_nodes, hidden_dim)
+
         
-        # Initialize the mask and mask1
-        mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
-        mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
+            # i=0
+            # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
+            for i in range(n_steps):
+                if not mask1[:, 1:].eq(0).any():
+                    break
+                if i == 0:   
+                    _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
+                    # print(f'_input: {_input}\n\n')
 
-        # Initialize the dynamic capacity and demands
-        dynamic_capacity = capacity.expand(batch_size, -1).to(device)
-        demands = demand.to(device)
+                # pool+cat(first_node,current_node)
+                decoder_input = torch.cat([_input, dynamic_capacity], -1)
+                decoder_input = self.fc(decoder_input)
+                pool = self.fc1(pool.to(device))
+                decoder_input = decoder_input + pool
 
-        # Initialize the index tensor to keep track of the visited nodes
-        index = torch.zeros(batch_size, dtype=torch.long, device=device)
-        
-        # Initialize the log probabilities and actions tensors
-        log_ps = []
-        actions = []
+                # If it is the first step, update the mask to avoid visiting the depot again
+                if i == 0:
+                    mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
 
-        # i=0
-        # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
-        for i in range(n_steps):
-            if not mask1[:, 1:].eq(0).any():
-                break
-            if i == 0:   
-                _input = encoder_inputs[:, 0, :]  # depot (batch_size,node,hidden_dim)
-                # print(f'_input: {_input}\n\n')
+                # Compute the probability distribution         
+                p = self.pointer(decoder_input, encoder_inputs, mask,T)
 
-            # pool+cat(first_node,current_node)
-            decoder_input = torch.cat([_input, dynamic_capacity], -1)
-            decoder_input = self.fc(decoder_input)
-            pool = self.fc1(pool.to(device))
-            decoder_input = decoder_input + pool
-            
-            # If it is the first step, update the mask to avoid visiting the depot again
-            if i == 0:
+                # Calculate the probability distribution for sampling
+                dist = Categorical(p)
+                # if i == 0:
+                #     index = torch.zeros(batch_size, dtype=torch.long, device=device)
+                # else:
+                if greedy:
+                    _, index = p.max(dim=-1)
+                else:
+                    index = dist.sample()
+
+                actions.append(index.data.unsqueeze(1))
+                log_p = dist.log_prob(index)
+                is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
+                log_p = log_p * (1. - is_done)
+
+                log_ps.append(log_p.unsqueeze(1))
+
+                dynamic_capacity = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item())
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
-            
-            # Compute the probability distribution         
-            p = self.pointer(decoder_input, encoder_inputs, mask,T)
-                
-            # Calculate the probability distribution for sampling
-            dist = Categorical(p)
-            # if i == 0:
-            #     index = torch.zeros(batch_size, dtype=torch.long, device=device)
-            # else:
-            if greedy:
-                _, index = p.max(dim=-1)
-            else:
-                index = dist.sample()
-            
-            actions.append(index.data.unsqueeze(1))
-            log_p = dist.log_prob(index)
-            is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
-            log_p = log_p * (1. - is_done)
 
-            log_ps.append(log_p.unsqueeze(1))
+                _input = torch.gather(
+                                      encoder_inputs, 1,
+                                      index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
+                                      ).squeeze(1)
 
-            dynamic_capacity = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item())
-            mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+            # Concatenate the actions and log probabilities
+            log_ps = torch.cat(log_ps, dim=1)
+            actions = torch.cat(actions, dim=1)
+            log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
             
-            _input = torch.gather(
-                                  encoder_inputs, 1,
-                                  index.unsqueeze(-1).unsqueeze(-1).expand(encoder_inputs.size(0), -1,encoder_inputs.size(2))
-                                  ).squeeze(1)
-            
-        # Concatenate the actions and log probabilities
-        log_ps = torch.cat(log_ps, dim=1)
-        actions = torch.cat(actions, dim=1)
-        log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
+            actions_list.append(actions)
+            log_ps_list.append(log_p)
 
-        return actions, log_p
+        return actions_list, log_ps_list

@@ -27,8 +27,9 @@ def run_inference(model, data_loader, n_steps, greedy, T):
     with torch.inference_mode():
         for batch in data_loader:
             batch = batch.to(device)
-            actions, tour_logp = model(batch, n_steps, greedy, T)
-            print("Tour Log Probabilities: ", tour_logp)
+            actions, log_ps_list = model(batch, n_steps, greedy=False, T=T, num_samples=1)
+            actions = actions[0]  # Get the actions for the first sample
+            print("Tour Log Probabilities: ", log_ps_list)
             
             # Get the reward value for the batch
             reward = pairwise_cost(actions, batch)
@@ -49,7 +50,7 @@ def main():
     model_path = r"actor.pt"
     # model_path = r"KunLei_actor.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100_EUCLIDEAN.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
     
     #Params
     node_input_dim = 3
