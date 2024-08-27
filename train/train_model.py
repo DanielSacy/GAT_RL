@@ -60,7 +60,7 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Compute the surrogate loss with the advantage and log probabilities
             # Add the costs in case there is a direct dependency on the parameters
-            surrogate_loss = -(adv.detach() * torch.stack(log_ps_list, dim=1) + costs_stack).mean()
+            surrogate_loss = (adv.detach() * torch.stack(log_ps_list, dim=1) + costs_stack).mean()
 
             # Actor Backward pass
             actor_optim.zero_grad()
@@ -80,9 +80,6 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
             
             # END OF EPOCH BLOCK CODE
         
-        # Rollout baseline update
-        # baseline.epoch_callback(actor, epoch)
-          
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
         mean_loss = torch.mean(losses).item()

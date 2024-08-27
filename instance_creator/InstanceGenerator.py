@@ -123,31 +123,26 @@ class InstanceGenerator:
             edge_distances = data.edge_attr.numpy().flatten()
             capacity = data.capacity.numpy()[0]
             distance_matrix = data.distance_matrix.numpy()
-            # mst_value = data.mst_value.numpy()[0]
-            # mst_route = data.mst_route.numpy()
             
             # Serialize all data using json.dumps
             serialized_capacity = json.dumps(capacity.tolist())
-            # serialized_mst_value = json.dumps(mst_value.tolist())
-            # serialized_mst_route = json.dumps(mst_route.tolist())
-            # serialized_distance_matrix = json.dumps(distance_matrix.tolist())
+            serialized_distance_matrix = json.dumps(distance_matrix.tolist())
 
             instance_df = pd.DataFrame({
                 'InstanceID': f'{self.n_customers}_{instance_num}',
                 'FromNode': edge_indices[:, 0],
                 'ToNode': edge_indices[:, 1],
                 'Distance': edge_distances,
-                'NodeFeatures': [node_features] * len(edge_distances),  # Empty for all rows except the first
+                'NodeFeatures': [json.dumps(node_features.tolist())] * len(edge_distances),
+                # 'NodeFeatures': [node_features] * len(edge_distances),  # Empty for all rows except the first
                 'Demand': np.repeat(node_demands, len(edge_distances) // len(node_demands)),
                 'Capacity': [''] * len(edge_distances),  # Empty for all rows except the first
-                'MstValue': [''] * len(edge_distances),  # Empty for all rows except the first
-                'MstRoute': [''] * len(edge_distances),  # Empty for all rows except the first
                 'DistanceMatrix': [''] * len(edge_distances)  # Empty for all rows except the first
             })
 
             # Insert the serialized values in the first row
             instance_df.at[0, 'Capacity'] = serialized_capacity
-            instance_df.at[0, 'DistanceMatrix'] = distance_matrix
+            instance_df.at[0, 'DistanceMatrix'] = serialized_distance_matrix
             # instance_df.at[0, 'MstValue'] = serialized_mst_value
             # instance_df.at[0, 'MstRoute'] = serialized_mst_route
 
@@ -175,24 +170,13 @@ class InstanceGenerator:
             edge_index = torch.tensor(instance_df[['FromNode', 'ToNode']].values.T, dtype=torch.long)
             edge_attr = torch.tensor(instance_df['Distance'].values, dtype=torch.float).unsqueeze(1)
             
-            # Deserialize the first row values for MST route, distance matrix, capacity, and MST value
-            # mst_route = json.loads(instance_df['MstRoute'].iloc[0])
             distance_matrix = json.loads(instance_df['DistanceMatrix'].iloc[0])
-            # capacity = json.loads(instance_df['Capacity'].iloc[0])
             capacity = instance_df['Capacity'].iloc[0]
-            # mst_value = instance_df['MstValue'].iloc[0]
-            # mst_value = json.loads(instance_df['MstValue'].iloc[0])
             
             # Convert distance_matrix, mst_route, capacity, and mst_value back into tensors
             distance_matrix = torch.tensor(distance_matrix, dtype=torch.float)
             capacity = torch.tensor([capacity], dtype=torch.float)
-            # mst_route = torch.tensor(mst_route, dtype=torch.long)
-            # mst_value = torch.tensor([mst_value], dtype=torch.float)
             
-            # capacity = torch.tensor([instance_df['Capacity'].values[0]], dtype=torch.float)  # Single capacity value for the instance
-            # mst_value = torch.tensor(instance_df['MstValue'].values[0], dtype=torch.float)
-            # mst_route = instance_df['MstRoute'].values[0]
-            # distance_matrix = torch.tensor(instance_df['DistanceMatrix'].values.reshape(len(node_features), len(node_features)))
             
             data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, demand=demands, capacity=capacity, distance_matrix=distance_matrix)
             # data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, demand=demands, capacity=capacity, mst_value=mst_value, mst_route=mst_route, distance_matrix=distance_matrix)
