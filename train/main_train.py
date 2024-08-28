@@ -31,7 +31,7 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 240000}
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 153000}
     # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 12}
     ]
     # valid_config = [
@@ -42,7 +42,7 @@ def main_train():
     # Sending the data to the device when generating the data
     start_to_load = time.time()
     logging.info("Creating dataloaders")
-    batch_size = 96
+    batch_size = 128
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
     # valid_batch_size = 5
@@ -62,7 +62,7 @@ def main_train():
     layers = 4
     negative_slope = 0.2
     dropout = 0.6
-    n_steps = 100
+    n_steps = 200
     lr = 1e-4
     # greedy = False
     T = 2.5 #1.0
