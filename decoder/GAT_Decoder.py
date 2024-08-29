@@ -2,6 +2,7 @@ import logging
 import torch
 from torch import nn
 from torch.distributions import Categorical
+from dice_mc.torch import sample_categorical
 from src_batch.decoder.PointerAttention import PointerAttention
 from src_batch.decoder.mask_capacity import update_state, update_mask
 
@@ -33,7 +34,7 @@ class GAT_Decoder(nn.Module):
             elif 'bias' in name:  # Check if it's a bias term
                 nn.init.constant_(param, 0)  # Initialize biases to zero
         
-    def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy, num_samples=4):
+    def forward(self, encoder_inputs, pool, capacity, demand, n_steps, T, greedy, num_samples):
         # encoder_inputs: (batch_size, n_nodes, hidden_dim)
         device = encoder_inputs.device  # to ensure the tensors are on the same device
 
@@ -42,7 +43,7 @@ class GAT_Decoder(nn.Module):
 
         log_ps_list = []  # To hold multiple sampled log-probs for each sample
         actions_list = []  # To hold multiple sampled actions for each sample
-
+        
         for _ in range(num_samples):
             mask1 = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
             mask = encoder_inputs.new_zeros(batch_size, seq_len, device=device)
@@ -52,7 +53,8 @@ class GAT_Decoder(nn.Module):
             log_ps = []
             actions = []    # encoder_inputs: (batch_size, n_nodes, hidden_dim)
 
-        
+            # finished_samples = torch.zeros(batch_size, dtype=torch.bool, device=device)  # Track finished samples
+
             # i=0
             # while (mask1[:, 1:].sum(1) < (demand.size(1) - 1)).any():
             for i in range(n_steps):
@@ -74,26 +76,29 @@ class GAT_Decoder(nn.Module):
 
                 # Compute the probability distribution         
                 p = self.pointer(decoder_input, encoder_inputs, mask,T)
-
-                # Calculate the probability distribution for sampling
                 dist = Categorical(p)
-                # if i == 0:
-                #     index = torch.zeros(batch_size, dtype=torch.long, device=device)
-                # else:
+                
                 if greedy:
                     _, index = p.max(dim=-1)
                 else:
+                    # log_p, index = sample_categorical(p)
                     index = dist.sample()
 
                 actions.append(index.data.unsqueeze(1))
-                log_p = dist.log_prob(index)
-                is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
-                log_p = log_p * (1. - is_done)
-
-                log_ps.append(log_p.unsqueeze(1))
-
+                
+                # Update the dynamic capacity and mask
                 dynamic_capacity = update_state(demands, dynamic_capacity, index.unsqueeze(-1), capacity[0].item())
                 mask, mask1 = update_mask(demands, dynamic_capacity, index.unsqueeze(-1), mask1, i)
+                
+                # Apply mask to the log probabilities
+                log_p = dist.log_prob(index)
+                is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1))).float()
+                # is_done = (mask1[:, 1:].sum(1) >= (encoder_inputs.size(1) - 1)).float()
+                log_p = log_p * (1. - is_done)
+                log_ps.append(log_p.unsqueeze(1))
+                
+                # Update finished_samples tensor
+                # finished_samples = finished_samples | (mask1[:, 1:].eq(0).all(dim=-1))
 
                 _input = torch.gather(
                                       encoder_inputs, 1,
@@ -103,6 +108,7 @@ class GAT_Decoder(nn.Module):
             # Concatenate the actions and log probabilities
             log_ps = torch.cat(log_ps, dim=1)
             actions = torch.cat(actions, dim=1)
+            
             log_p = log_ps.sum(dim=1) # Dimension of log_p: (batch_size,)
             
             actions_list.append(actions)
