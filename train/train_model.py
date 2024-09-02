@@ -1,21 +1,58 @@
-import datetime
-import pandas as pd
-import torch
-import torch.optim as optim
-import os
-import time
+# Import necessary libraries for Python and PyTorch, along with other dependencies
+import sys  # For modifying system paths
+
+# Add parent directory to system path for module imports
+sys.path.append('..')
+
+# Import popular data science library (Pandas) and essential Torch modules
+import datetime  # For timestamping logs and files
+import pandas as pd  # Library for efficient numerical computation and data analysis
+import torch  # Core PyTorch library
+import torch.optim as optim  # Module for various optimizer algorithms
+import os  # For interacting with the operating system (e.g., file manipulation)
+import time  # For timing code execution
+
+# Import TensorBoard module from Torch for logging model performance metrics
 from torch.utils.tensorboard import SummaryWriter
+
+# Import LambdaLR class from PyTorch's optim module for learning rate scheduling
 from torch.optim.lr_scheduler import LambdaLR
 
-from ..RL.Pairwise_cost import pairwise_cost
-from ..RL.Rollout_Baseline import RolloutBaseline, rollout
-from utils import scale_to_range, scale_back, normalize
+# Import utility functions from the RL and utils modules
+from RL.Pairwise_cost import pairwise_cost  # Function to compute pairwise costs in RL algorithms
+from RL.Rollout_Baseline import RolloutBaseline, rollout  # Classes and function for rolling out model predictions
 
+# Import scaling and normalization utilities from the utils module
+from utils import scale_to_range, scale_back, normalize  # Functions for data preprocessing
+
+# Record the current date and time to use in file names and logs
 now = datetime.datetime.now().strftime("%Y-%m-%d %H")
+
+# Set device (GPU or CPU) for PyTorch computations based on availability
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Initialize TensorBoard writer for logging model performance metrics
 writer = SummaryWriter()
 
 def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T):
+    """
+    Train the PyTorch model on the specified dataset using the provided hyperparameters.
+
+    Parameters:
+        - model (torch.nn.Module): The PyTorch model to be trained.
+        - data_loader (torch.utils.data.DataLoader): Data loader for training set.
+        - valid_loader (torch.utils.data.DataLoader): Data loader for validation set.
+        - folder (str): Folder name for saving model checkpoints and logs.
+        - filename (str): File name for saving model checkpoints and logs.
+        - lr (float): Initial learning rate for the optimizer.
+        - n_steps (int): Number of training steps per epoch.
+        - num_epochs (int): Total number of epochs to train the model.
+        - T (int): Temperature hyperparameter for the softmax function.
+
+    Returns:
+        None
+    """
+
     # Gradient clipping value
     max_grad_norm = 2.0
     
@@ -167,3 +204,4 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
     training_time = training_end - train_start
     print(f' Total Training Time: {training_time:.2f}')
     writer.close()
+

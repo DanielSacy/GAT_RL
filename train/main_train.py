@@ -1,13 +1,14 @@
+import sys
+sys.path.append('..')
 import time
 import datetime
 import torch
 import os
 import logging
 from torch.profiler import profile, record_function, ProfilerActivity
-
-from src_batch.model.Model import Model
-from src_batch.train.train_model import train
-from src_batch.instance_creator.instance_loader import instance_loader
+from model.Model import Model
+from train.train_model import train
+from instance_creator.instance_loader import instance_loader
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
