@@ -1,3 +1,6 @@
+import torch
+
+
 def scale_to_range(cost, min_val=0.0, max_val=1.0):
     # Compute the minimum and maximum values of the cost
     min_cost = cost.min()
@@ -17,5 +20,7 @@ def scale_back(scaled_cost, min_cost, max_cost):
     return original_cost
 
 def normalize(values):
-    normed = (values - values.mean()) / (values.std() + 1e-8)
-    return normed
+    std = values.std()
+    assert std != 0. and not torch.isnan(std), 'Need nonzero std'
+    n_values = (values - values.mean()) / (values.std() + 1e-8)
+    return n_values

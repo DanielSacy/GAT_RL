@@ -1,7 +1,7 @@
 import copy
 import torch
 from scipy.stats import ttest_rel
-from src_batch.RL.Pairwise_cost import pairwise_cost
+from ..RL.euclidean_cost import euclidean_cost
 
 
 # Define the device
@@ -15,7 +15,7 @@ def rollout(model, dataset, n_nodes, T):
             # Simulate the model on the batchch of instances
             tour, _ = model(batch, n_nodes * 2, greedy=True, T=T)
             # Compute the cost of the tour using the reward function
-            cost = pairwise_cost(tour.detach(), batch)
+            cost = euclidean_cost(batch.x, tour.detach(), batch)
         return cost
 
     # Concatenate all the results across the dataset
@@ -33,23 +33,22 @@ class RolloutBaseline():
     def _update_model(self, model, epoch):
         """Deepcopy the model and compute baseline values"""
         self.model = copy.deepcopy(model).to(device)  # Deepcopy the model
-        self.bl_vals = rollout(self.model, self.dataset, self.n_nodes, self.T)#.cpu().numpy()  # Compute the baseline values
+        self.bl_vals = rollout(self.model, self.dataset, self.n_nodes, self.T).cpu().numpy()  # Compute the baseline values
         self.mean = self.bl_vals.mean()  # Calculate the mean of the baseline values
         self.epoch = epoch
 
     def eval(self, batch, n_nodes):
         """Evaluate the baseline model on a batch of data"""
-        self.model.eval()  # Set the model to evaluation mode
-        with torch.inference_mode():
+        with torch.no_grad():
             tour, _ = self.model(batch, n_nodes, greedy=True, T=self.T)
-            base = pairwise_cost(tour.detach(), batch)
-        return base
+            base = euclidean_cost(batch.x, tour.detach(), batch)
+        return base.detach()
 
     def epoch_callback(self, model, epoch):
         """Evaluate the new model and compare it with the baseline"""
         print("Evaluating candidate model on evaluation dataset")
 
-        candidate_vals = rollout(model, self.dataset, self.n_nodes, self.T)#.cpu().numpy()
+        candidate_vals = rollout(model, self.dataset, self.n_nodes, self.T).cpu().numpy()
         candidate_mean = candidate_vals.mean()
 
         print(f"Epoch {epoch} candidate mean {candidate_mean}, baseline epoch {self.epoch} mean {self.mean}, difference {candidate_mean - self.mean}")

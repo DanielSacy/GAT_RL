@@ -31,7 +31,7 @@ def pairwise_cost(actions, batch):
     total_route = route_distances.sum(dim=1)  # Shape: [batch_size]
     
     # Count the number of depot visits
-    depot_visits = (routes == 0).sum(dim=1) - 2  # Exclude start and end depot visits
+    depot_visits = (routes == 0).sum(dim=1) - 3  # Exclude start and end depot visits
 
     # Apply penalty for depot visits
     depot_penalty = 0.3 * depot_visits  # Modify this factor as needed
@@ -39,7 +39,7 @@ def pairwise_cost(actions, batch):
     total_distances = total_route + depot_penalty
 
     # Return the negative route distances as rewards (cost minimization problem)
-    return total_distances
+    return total_distances.detach()
 
 # def pairwise_cost(actions, batch):
 #     """

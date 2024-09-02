@@ -81,7 +81,10 @@ class InstanceGenerator:
         N, demand, load_capacity, distance, distance_matrix, coordinates = self.instanSacy()
         # No, N, M, demand, load_capacity, distance, mst_baseline_value, mst_baseline_route, distance_matrix, coordinates = self.instanSacy()
 
-        node_features = torch.tensor([coordinates[i].tolist() + [demand[i]] for i in N], dtype=torch.float)
+        # Node features only coordinates
+        node_features = torch.tensor([coordinates[i].tolist() for i in N], dtype=torch.float)
+        
+        # node_features = torch.tensor([coordinates[i].tolist() + [demand[i]] for i in N], dtype=torch.float)
         # node_features = torch.tensor([demand[i] for i in N], dtype=torch.float).unsqueeze(1)
         edge_index = torch.tensor([[i, j] for i in N for j in N ], dtype=torch.long).t().contiguous()
         edge_attr = torch.tensor([distance[(i.item(), j.item())] for i, j in edge_index.t()], dtype=torch.float).unsqueeze(1)
@@ -145,8 +148,6 @@ class InstanceGenerator:
                 'NodeFeatures': [node_features] * len(edge_distances),  # Empty for all rows except the first
                 'Demand': np.repeat(node_demands, len(edge_distances) // len(node_demands)),
                 'Capacity': [''] * len(edge_distances),  # Empty for all rows except the first
-                'MstValue': [''] * len(edge_distances),  # Empty for all rows except the first
-                'MstRoute': [''] * len(edge_distances),  # Empty for all rows except the first
                 'DistanceMatrix': [''] * len(edge_distances)  # Empty for all rows except the first
             })
 

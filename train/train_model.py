@@ -7,9 +7,8 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import LambdaLR
 
-from ..RL.Pairwise_cost import pairwise_cost
+from ..RL.euclidean_cost import euclidean_cost
 from ..RL.Rollout_Baseline import RolloutBaseline, rollout
-from utils import scale_to_range, scale_back, normalize
 
 now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -21,7 +20,7 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
-    # baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
+    baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
     
     actor_optim = optim.Adam(actor.parameters(), lr)
     
@@ -54,40 +53,34 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             # REWARD
             # Track or not the gradients of the reward
             # reward = pairwise_cost(actions, batch)
-            cost = pairwise_cost(actions.detach(), batch)
+            cost = euclidean_cost(batch.x, actions.detach(), batch)
             
             '''BASELINE BLOCK'''        
             # EXPONENTIAL MOVING AVERAGE
             # Put it in inference mode?
-            if i == 0:
-                critic_exp_mvg_avg = cost.mean()
-            else:
-                critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * cost.mean())
+            # if i == 0:
+            #     critic_exp_mvg_avg = cost.mean()
+            # else:
+            #     critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * cost.mean()).detach()
             
             # ROLLOUT
-            # rollout_cost = baseline.eval(batch, n_steps)
-            # rollout_reward = -rollout_cost
+            rollout_cost = baseline.eval(batch, n_steps)
             '''BASELINE BLOCK'''            
             
             # ADVANTAGE
-            advantage = (cost - critic_exp_mvg_avg.detach())
-            # advantage = 5 * torch.tanh(advantage)
+            advantage = (cost - rollout_cost)
+            
+            # Normalize the advantage
+            # advantage_norm = normalize(advantage)
+            # print("advantage_norm:", advantage_norm)
             
             # Actor Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             actor_optim.zero_grad()
             reinforce_loss.backward()
             
-            # Log the gradient norms
-            total_grad_norm = 0
-            for param in actor.parameters():
-                if param.grad is not None:
-                    param_norm = param.grad.data.norm(2)  # L2 norm of gradients
-                    total_grad_norm += param_norm.item() ** 2
-            total_grad_norm = total_grad_norm ** 0.5  # Final total L2 norm of all gradients
-            
             # Clip helps with the exploding and vanishing gradient problem
-            torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
+            total_grad_norm = torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
             
             # Update the actor
             actor_optim.step()
@@ -95,15 +88,15 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(cost.detach())
-            baselines[i] = torch.mean(critic_exp_mvg_avg.detach())
+            baselines[i] = torch.mean(rollout_cost.detach())
             advantages[i] = torch.mean(advantage.detach())
             losses[i] = torch.mean(reinforce_loss.detach())
-            parameters[i] = total_grad_norm
+            parameters[i] = total_grad_norm.detach()
             
             # END OF EPOCH BLOCK CODE
         
         # Rollout baseline update
-        # baseline.epoch_callback(actor, epoch)
+        baseline.epoch_callback(actor, epoch)
           
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
