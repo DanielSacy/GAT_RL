@@ -56,7 +56,8 @@ class PointerAttention(nn.Module):
                 nn.init.constant_(param, 0)
     def forward(self, state_t, context, mask, T):
         """
-        Forward pass through the attention layer.
+        This function computes the attention scores, applies the mask, computes the nodes probabilities and returns them as a softmax score.
+        - Applies a clipping to the attention scores to avoid numerical instability.
 
         Args:
             state_t (Tensor): The current state of the model.

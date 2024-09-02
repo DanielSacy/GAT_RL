@@ -38,7 +38,7 @@ class Model(nn.Module):
             data (torch_geometric.data.Data): Input data object containing node features, edge features, and edge indices.
             n_steps (int): Number of steps for the decoder to generate actions.
             greedy (bool): Whether to use greedy or sampling-based action selection.
-            T (float): Temperature parameter for entropy regularization.
+            T (float): Temperature parameter for entropy regularization. Temperature for softmax based on Kun et al. (2021)
         
         Returns:
             actions (torch.Tensor): Generated actions based on graph embeddings.
@@ -46,6 +46,7 @@ class Model(nn.Module):
         """
 
         # Compute node embeddings using the encoder component
+        # data.x: node features, data.edge_attr: edge features, data.edge_index: edge indices
         x = self.encoder(data)  # Shape: (n_nodes, hidden_dim)
         
         # Compute graph embedding by taking the mean of all node embeddings per feature dimension
