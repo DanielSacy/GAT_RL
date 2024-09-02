@@ -16,7 +16,7 @@ def update_mask(demand,capacity,selected,mask,i):
 
     if i+1>demand.size(1):
      #   if (mask1[:, 1:].sum(1) < (demand.size(1)-1)).any():
-        is_done = (~((~(mask1[:, 1:])).all(-1))).float()
+        is_done = (mask1[:, 1:].sum(1) >= (demand.size(1) - 1)).float()
         combined = is_done.gt(0)
         mask1[combined.nonzero(), 0] = 0
                 

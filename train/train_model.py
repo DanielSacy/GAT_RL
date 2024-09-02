@@ -108,6 +108,7 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             
             # ADVANTAGE
             advantage = (cost - critic_exp_mvg_avg.detach())
+            # -12  - (-15) = +3
             # advantage = 5 * torch.tanh(advantage)
             
             # Actor Backward pass

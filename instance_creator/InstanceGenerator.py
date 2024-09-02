@@ -197,10 +197,10 @@ class InstanceGenerator:
             self.generate_and_save_instances(data_list, filename)
         
         # Create an InMemoryDataset object from the generated instances
-        in_memory_dataset = InMemoryDataset(data_list)
+        # in_memory_dataset = InMemoryDataset(data_list) #TODO: check why this was required
         
         # Create a DataLoader object for in-memory processing
-        data_loader = DataLoader(in_memory_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=0)
+        data_loader = DataLoader(data_list, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=0)
         return data_loader
 
     def generate_and_save_instances(self, data_list, filename):
