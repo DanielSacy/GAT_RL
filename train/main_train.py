@@ -62,7 +62,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
 
-    num_epochs = 1
+    num_epochs = 10
     
     logging.info("Instantiating the model")
     # Instantiate the Model and the RolloutBaseline

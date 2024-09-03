@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 import os
 import time
+import dice_mc.torch as dice
 from torch.utils.tensorboard import SummaryWriter
 
 from ..RL.euclidean_cost import euclidean_cost
@@ -15,6 +16,7 @@ writer = SummaryWriter()
 def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 2.0
+    num_samples = 1
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
@@ -33,7 +35,6 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         batch_size = len(data_loader)
         rewards = torch.zeros(batch_size, device=device)
         baselines = torch.zeros(batch_size, device=device)
-        advantages = torch.zeros(batch_size, device=device)
         losses = torch.zeros(batch_size, device=device)
         parameters = torch.zeros(batch_size, device=device)
 
@@ -43,20 +44,40 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
-            # Actor forward pass
-            actions, tour_logp = actor(batch, n_steps, greedy=False, T=T)
-            
-            # REWARD
-            # Track or not the gradients of the reward
-            cost = euclidean_cost(batch.x, actions.detach(), batch)
-            
-            # ADVANTAGE
-            advantage = (cost)
+             # Actor forward pass with multiple samples
+            actions_list, log_ps_list = actor(batch, n_steps, greedy=False, T=T, num_samples=num_samples)
+
+            # Initialize lists to collect all costs and log probabilities
+            all_costs = []
+            all_log_ps = []
+
+            for sample_idx in range(num_samples):
+                actions = actions_list[sample_idx]
+                cost = euclidean_cost(batch.x, actions.detach(), batch)  # Shape: (batch_size,)
+                all_costs.append(cost)
+                
+                log_p = log_ps_list[sample_idx]  # Shape: (batch_size,)
+                all_log_ps.append(log_p)
+
+            # Stack all costs and log probabilities
+            stacked_costs = torch.stack(all_costs, dim=0).view(-1)
+            stacked_log_ps = torch.stack(all_log_ps, dim=0).view(-1)
+
+            # Create a single cost node for all samples and batch items
+            surrogate_loss = dice.cost_node(stacked_costs, [stacked_log_ps])
+
+            # Apply the baseline (using batch_baseline_term)
+            baseline_term = dice.batch_baseline_term(surrogate_loss, [stacked_log_ps])
+
+            # Combine surrogate loss with baseline
+            total_loss = surrogate_loss + baseline_term
+
+            # Compute the mean loss over all samples and batch items
+            mean_total_loss = total_loss.mean()
             
             # Actor Backward pass
-            reinforce_loss = torch.mean(advantage.detach() * tour_logp)
             actor_optim.zero_grad()
-            reinforce_loss.backward()
+            mean_total_loss.backward()
             
             # Clip helps with the exploding and vanishing gradient problem
             total_grad_norm = torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
@@ -66,16 +87,14 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(cost.detach())
-            advantages[i] = torch.mean(advantage.detach())
-            losses[i] = torch.mean(reinforce_loss.detach())
+            losses[i] = torch.mean(mean_total_loss.detach())
             parameters[i] = total_grad_norm.detach()
             
             # END OF EPOCH BLOCK CODE
         
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
-        mean_baseline = torch.mean(baselines).item()
-        mean_advantage = torch.mean(advantages).item()
+        mean_baseline = torch.mean(baseline_term).item()
         mean_loss = torch.mean(losses).item()
         mean_parameters = torch.mean(parameters).item()
 
@@ -97,7 +116,6 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
             'mean_reward': f'{mean_reward:.3f}',
             # 'MIN_REWARD': f'{min_reward_soFar:.3f}',
             'mean_baseline': f'{mean_baseline:.3f}',
-            'mean_advantage': f'{mean_advantage:.3f}',
             ' ': ' ',
             'mean_loss': f'{mean_loss:.3f}',
             # 'MIN_LOSS': f'{min_loss_soFar:.3f}',
@@ -113,7 +131,7 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         results_df.to_csv(f'instances/{now}h.csv', index=False)
 
         # print(f'Epoch {epoch}, mean loss: {mean_loss:.2f}, mean reward: {mean_reward:.2f}, time: {epoch_time:.2f}')
-        print(f'Epoch {epoch}, mean loss: {mean_loss:.3f}, mean reward: {mean_reward:.3f}, mean_baseline: {mean_baseline:.3f}, mean_advantage: {mean_advantage:.3f}, time: {epoch_time:.2f}')
+        print(f'Epoch {epoch}, mean loss: {mean_loss:.3f}, mean reward: {mean_reward:.3f}, mean_baseline: {mean_baseline:.3f}, time: {epoch_time:.2f}')
 
         # Save if the Loss is less than the minimum so far
         epoch_dir = os.path.join(folder, '%s' % epoch)
