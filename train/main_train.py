@@ -31,13 +31,13 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 768000}
-    # {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 2}
+    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 768000}
+    {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 2}
     # Add more configurations as needed
     ]
     valid_config = [
-    # {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 1}
-     {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 10000}
+    {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 1}
+    #  {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 10000}
     # Add more configurations as needed
     ]
     # Create dataloaders
