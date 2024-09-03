@@ -35,11 +35,6 @@ def main_train():
     {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 2}
     # Add more configurations as needed
     ]
-    valid_config = [
-    {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 1}
-    #  {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 10000}
-    # Add more configurations as needed
-    ]
     # Create dataloaders
     # Sending the data to the device when generating the data
     start_to_load = time.time()
@@ -47,8 +42,6 @@ def main_train():
     batch_size = 512
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
-    valid_batch_size = 512
-    valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
     end_of_load = time.time()
     logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
     
@@ -69,7 +62,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
 
-    num_epochs = 150
+    num_epochs = 1
     
     logging.info("Instantiating the model")
     # Instantiate the Model and the RolloutBaseline
@@ -77,7 +70,7 @@ def main_train():
     
     logging.info("Calling the train function")
     # Call the train function
-    train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T)
+    train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
     #     with record_function("model_inference"):
     #         train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)

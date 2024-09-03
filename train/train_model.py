@@ -5,22 +5,19 @@ import torch.optim as optim
 import os
 import time
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.lr_scheduler import LambdaLR
 
 from ..RL.euclidean_cost import euclidean_cost
-from ..RL.Rollout_Baseline import RolloutBaseline, rollout
 
 now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter()
 
-def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T):
+def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 2.0
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
-    baseline = RolloutBaseline(actor, valid_loader, n_nodes=n_steps, T=T)
     
     actor_optim = optim.Adam(actor.parameters(), lr)
     
@@ -43,7 +40,6 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
         times = []
         epoch_start = time.time()
         
-        # scheduler = LambdaLR(actor_optim, lr_lambda=lambda f: 0.96 ** epoch)
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
@@ -52,27 +48,10 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             
             # REWARD
             # Track or not the gradients of the reward
-            # reward = pairwise_cost(actions, batch)
             cost = euclidean_cost(batch.x, actions.detach(), batch)
             
-            '''BASELINE BLOCK'''        
-            # EXPONENTIAL MOVING AVERAGE
-            # Put it in inference mode?
-            # if i == 0:
-            #     critic_exp_mvg_avg = cost.mean()
-            # else:
-            #     critic_exp_mvg_avg = (critic_exp_mvg_avg * 0.8) + ((1. - 0.8) * cost.mean()).detach()
-            
-            # ROLLOUT
-            rollout_cost = baseline.eval(batch, n_steps)
-            '''BASELINE BLOCK'''            
-            
             # ADVANTAGE
-            advantage = (cost - rollout_cost)
-            
-            # Normalize the advantage
-            # advantage_norm = normalize(advantage)
-            # print("advantage_norm:", advantage_norm)
+            advantage = (cost)
             
             # Actor Backward pass
             reinforce_loss = torch.mean(advantage.detach() * tour_logp)
@@ -84,20 +63,15 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             
             # Update the actor
             actor_optim.step()
-            # scheduler.step()
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(cost.detach())
-            baselines[i] = torch.mean(rollout_cost.detach())
             advantages[i] = torch.mean(advantage.detach())
             losses[i] = torch.mean(reinforce_loss.detach())
             parameters[i] = total_grad_norm.detach()
             
             # END OF EPOCH BLOCK CODE
         
-        # Rollout baseline update
-        baseline.epoch_callback(actor, epoch)
-          
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
         mean_baseline = torch.mean(baselines).item()
