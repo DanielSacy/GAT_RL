@@ -4,9 +4,7 @@ import os
 import logging
 from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
 from src_batch.model.Model import Model
-
-from RL.Compute_Reward import compute_reward
-from RL.Pairwise_cost import pairwise_cost
+from src_batch.RL.euclidean_cost_eval import euclidean_cost_eval
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -31,7 +29,7 @@ def run_inference(model, data_loader, n_steps, greedy, T):
             print("Tour Log Probabilities: ", tour_logp)
             
             # Get the reward value for the batch
-            reward = pairwise_cost(actions, batch)
+            reward = euclidean_cost_eval(batch.x, actions, batch)
             
             # Adding the depot {0} at the end of every route
             depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
@@ -47,9 +45,8 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 def main():
     # Define paths
     model_path = r"actor.pt"
-    # model_path = r"KunLei_actor.pt"
-    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes20_Instances100_EUCLIDEAN.csv"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100_EUCLIDEAN.csv"
+    # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Nodes3_Instances2.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100.csv"
     
     #Params
     node_input_dim = 3
