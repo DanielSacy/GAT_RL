@@ -25,8 +25,9 @@ def run_inference(model, data_loader, n_steps, greedy, T):
     with torch.inference_mode():
         for batch in data_loader:
             batch = batch.to(device)
-            actions, tour_logp = model(batch, n_steps, greedy, T)
+            actions, tour_logp = model(batch, n_steps, greedy, T, num_samples=1)
             print("Tour Log Probabilities: ", tour_logp)
+            actions = torch.tensor(actions[0], dtype=torch.long, device=device)
             
             # Get the reward value for the batch
             reward = euclidean_cost_eval(batch.x, actions, batch)

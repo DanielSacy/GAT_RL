@@ -43,11 +43,6 @@ class InstanceGenerator:
         
         # Create the distance matrix using Euclidean distance
         distance = {(i, j): 0 if i == j else InstanceGenerator.euclidean_distance(coordinates[i], coordinates[j]) for i in N for j in N}
-
-        # Convert to a distance matrix format
-        # distance_matrix = np.zeros((len(N), len(N)))
-        # for (i, j), dist in distance.items():
-        #     distance_matrix[i][j] = dist
         ''''''
 
         demand = {i: 0 if i not in No else np.random.randint(1, self.max_demand+1)/10 for i in N} # Demand per customer
@@ -68,8 +63,6 @@ class InstanceGenerator:
         
         demand = torch.tensor([demand[i] for i in N], dtype=torch.float).unsqueeze(1)
         capacity = torch.tensor([load_capacity], dtype=torch.float)
-        
-        # distance_matrix_tensor = torch.tensor(distance_matrix, dtype=torch.float)
         
         data = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr, demand=demand, capacity=capacity)
         return data
@@ -107,9 +100,7 @@ class InstanceGenerator:
             # Serialize all data using json.dumps
             serialized_capacity = json.dumps(capacity.tolist())
             serialized_node_features = json.dumps(node_features.tolist())
-            # print(f'serialized_node_features: {serialized_node_features}')
 
-            # serialized_distance_matrix = json.dumps(distance_matrix.tolist())
 
             instance_df = pd.DataFrame({
                 'InstanceID': f'{self.n_customers}_{instance_num}',
@@ -120,12 +111,8 @@ class InstanceGenerator:
                 'NodeFeatures': [serialized_node_features] * len(edge_distances),  
                 'Demand': np.repeat(node_demands, len(edge_distances) // len(node_demands)),
                 'Capacity': [''] * len(edge_distances),  # Empty for all rows except the first
-                # 'DistanceMatrix': [distance_matrix] * len(edge_distances)  # Empty for all rows except the first
-                # 'DistanceMatrix': [''] * len(edge_distances)  # Empty for all rows except the first
             })
 
-            # Insert the serialized values in the first row
-            # instance_df.at[0, 'DistanceMatrix'] = serialized_distance_matrix
             instance_df.at[0, 'Capacity'] = serialized_capacity
 
             all_instances.append(instance_df)
@@ -151,10 +138,6 @@ class InstanceGenerator:
             node_features = torch.tensor(node_features, dtype=torch.float)
             edge_index = torch.tensor(instance_df[['FromNode', 'ToNode']].values.T, dtype=torch.long)
             edge_attr = torch.tensor(instance_df['Distance'].values, dtype=torch.float).unsqueeze(1)
-            
-            # Deserialize the first row values for MST route, distance matrix, capacity, and MST value
-            # distance_matrix = json.loads(instance_df['DistanceMatrix'].iloc[0])
-            # distance_matrix = torch.tensor(distance_matrix, dtype=torch.float)
             
             capacity = instance_df['Capacity'].iloc[0]
             capacity = torch.tensor([capacity], dtype=torch.float)

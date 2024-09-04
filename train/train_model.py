@@ -16,7 +16,7 @@ writer = SummaryWriter()
 def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 2.0
-    num_samples = 1
+    num_samples = 4
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
@@ -48,36 +48,23 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
             actions_list, log_ps_list = actor(batch, n_steps, greedy=False, T=T, num_samples=num_samples)
 
             # Initialize lists to collect all costs and log probabilities
-            all_costs = []
-            all_log_ps = []
-
+            surrogate_losses = []
             for sample_idx in range(num_samples):
                 actions = actions_list[sample_idx]
                 cost = euclidean_cost(batch.x, actions.detach(), batch)  # Shape: (batch_size,)
-                all_costs.append(cost)
                 
-                log_p = log_ps_list[sample_idx]  # Shape: (batch_size,)
-                all_log_ps.append(log_p)
+                surrogate_loss = dice.cost_node(cost, [log_ps_list[sample_idx]])
+                surrogate_losses.append(surrogate_loss)
+                baseline_term = dice.batch_baseline_term(cost, [log_ps_list[sample_idx]])
+                surrogate_losses[sample_idx] = surrogate_loss + baseline_term       
 
-            # Stack all costs and log probabilities
-            stacked_costs = torch.stack(all_costs, dim=0).view(-1)
-            stacked_log_ps = torch.stack(all_log_ps, dim=0).view(-1)
-
-            # Create a single cost node for all samples and batch items
-            surrogate_loss = dice.cost_node(stacked_costs, [stacked_log_ps])
-
-            # Apply the baseline (using batch_baseline_term)
-            baseline_term = dice.batch_baseline_term(surrogate_loss, [stacked_log_ps])
-
-            # Combine surrogate loss with baseline
-            total_loss = surrogate_loss + baseline_term
-
-            # Compute the mean loss over all samples and batch items
-            mean_total_loss = total_loss.mean()
+            # Stack the costs and surrogate losses
+            surrogate_loss_stack = torch.stack(surrogate_losses, dim=1)
+            total_loss = surrogate_loss_stack.mean()  # Mean over the samples
             
-            # Actor Backward pass
+            # Backward pass
             actor_optim.zero_grad()
-            mean_total_loss.backward()
+            total_loss.backward()
             
             # Clip helps with the exploding and vanishing gradient problem
             total_grad_norm = torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
@@ -87,7 +74,7 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
 
             # Update the pre-allocated tensors
             rewards[i] = torch.mean(cost.detach())
-            losses[i] = torch.mean(mean_total_loss.detach())
+            losses[i] = torch.mean(total_loss.detach())
             parameters[i] = total_grad_norm.detach()
             
             # END OF EPOCH BLOCK CODE

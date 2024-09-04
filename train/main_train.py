@@ -31,15 +31,15 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 768000}
-    {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 2}
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 64000}
+    # {'n_customers': 2, 'max_demand': 10, 'max_distance': 100, 'num_instances': 2}
     # Add more configurations as needed
     ]
     # Create dataloaders
     # Sending the data to the device when generating the data
     start_to_load = time.time()
     logging.info("Creating dataloaders")
-    batch_size = 512
+    batch_size = 64
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
     end_of_load = time.time()
@@ -62,7 +62,7 @@ def main_train():
     # greedy = False
     T = 2.5 #1.0
 
-    num_epochs = 10
+    num_epochs = 100
     
     logging.info("Instantiating the model")
     # Instantiate the Model and the RolloutBaseline

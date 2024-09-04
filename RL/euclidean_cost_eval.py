@@ -25,7 +25,6 @@ def euclidean_cost_eval(static, actions, batch):
     # Compute the Euclidean distance between consecutive points
     tour_len = torch.sqrt(torch.sum(torch.pow(y[:, :-1] - y[:, 1:], 2), dim=2))
     tour_len = torch.round(tour_len, decimals=2)
-    print("Tour Length: ", tour_len)
     
     # Sum the distances to get the total tour length for each batch
     total_tour_len = tour_len.sum(1).detach()
