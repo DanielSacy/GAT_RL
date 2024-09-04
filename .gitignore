@@ -4,4 +4,6 @@ instances/
 runs/
 model_checkpoints/
 model_checkpoints_2/
+Checkpoints/
+logs/
 actor.pt
