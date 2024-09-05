@@ -10,7 +10,7 @@ class Model(nn.Module):
         self.encoder = ResidualEdgeGATEncoder(node_input_dim, edge_input_dim, hidden_dim, edge_dim, layers, negative_slope, dropout)
         self.decoder = GAT_Decoder(hidden_dim, hidden_dim)
 
-    def forward(self, data,  n_steps, greedy, T, num_samples=1):
+    def forward(self, data,  n_steps, greedy, T):
         # data.x: node features, data.edge_attr: edge features, data.edge_index: edge indices
         x = self.encoder(data)  # Shape of x: (n_nodes, hidden_dim) 
         # Compute the graph embedding > mean of all node embeddings per feature dimension
@@ -20,19 +20,8 @@ class Model(nn.Module):
         batch_size = data.batch.max().item() + 1
         demand = data.demand.reshape(batch_size, -1).float().to(data.x.device)
         capacity = data.capacity.reshape(batch_size, -1).float().to(data.x.device)
-        
-        # Initialize lists to store the actions and log probabilities for each sample
-        actions_list = []
-        log_ps_list = []
 
-        # Loop over the number of samples
-        for _ in range(num_samples):
-            actions, log_p = self.decoder(x, graph_embedding, capacity, demand, n_steps, T, greedy)
-            actions_list.append(actions)
-            log_ps_list.append(log_p)
-        
-        return actions_list, log_ps_list
         # # Call the decoder
-        # actions, log_p = self.decoder(x, graph_embedding, capacity, demand, n_steps,T, greedy)
+        actions, log_p = self.decoder(x, graph_embedding, capacity, demand, n_steps,T, greedy)
         
-        # return actions, log_p
+        return actions, log_p
