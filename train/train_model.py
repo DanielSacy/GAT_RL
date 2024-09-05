@@ -10,11 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 from ..RL.euclidean_cost import euclidean_cost
 from ..train.utils import evaluate_on_validation
 
-now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter()
+now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 
-def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T):
+def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
     max_grad_norm = 2.0
     num_samples = 8
@@ -77,7 +77,6 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
             losses[i] = torch.mean(total_loss.detach())
             
             # END OF EPOCH BLOCK CODE
-        print(f'Epoch {epoch}, mean loss: {mean_loss:.2f}, mean reward: {mean_reward:.2f}, time: {epoch_time:.2f}')
         
         # Calculate the mean values for the epoch
         mean_reward = torch.mean(rewards).item()
@@ -95,18 +94,16 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
         epoch_time = end - epoch_start
         times.append(end - epoch_start)
         epoch_start = end
+        print(f'Epoch {epoch}, mean loss: {mean_loss:.2f}, mean reward: {mean_reward:.2f}, time: {epoch_time:.2f}')
 
         # Store the results for this epoch
         training_results.append({
             'epoch': epoch,
             'mean_reward': f'{mean_reward:.3f}',
-            # 'MIN_REWARD': f'{min_reward_soFar:.3f}',
             ' ': ' ',
             'mean_loss': f'{mean_loss:.3f}',
-            # 'MIN_LOSS': f'{min_loss_soFar:.3f}',
             ' ': ' ',
             'epoch_time': f'{epoch_time:.2f}'
-            # 'param_norm': f'{np.mean(param_norms):.3f}'
         })
 
         # Convert the results to a pandas DataFrame
@@ -129,16 +126,11 @@ def train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_e
     #         print(f'Best model saved at {best_model_path}')
 
         # Save if the Loss is less than the minimum so far
-        # epoch_dir = os.path.join(folder, '%s' % epoch)
-        # if not os.path.exists(epoch_dir):
-        #     os.makedirs(epoch_dir)
-        # save_path = os.path.join(epoch_dir, 'actor.pt')
-        # save_path_best = os.path.join(epoch_dir, 'actor_best.pt')
-        # if mean_loss < min_loss_soFar:
-        #     torch.save(actor.state_dict(), save_path_best)
-        #     print(f'New best model saved at epoch {epoch}')
-        #     min_loss_soFar = mean_loss
-        # torch.save(actor.state_dict(), save_path)
+        epoch_dir = os.path.join(folder, '%s' % epoch)
+        if not os.path.exists(epoch_dir):
+            os.makedirs(epoch_dir)
+        save_path = os.path.join(epoch_dir, 'actor.pt')
+        torch.save(actor.state_dict(), save_path)
         
         # Push losses and rewards to tensorboard
         writer.flush()

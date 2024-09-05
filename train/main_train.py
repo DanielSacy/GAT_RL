@@ -46,8 +46,8 @@ def main_train():
     batch_size = 64
     save_to_csv = False
     data_loader = instance_loader(config, batch_size, save_to_csv)
-    valid_batch_size = 512
-    valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
+    # valid_batch_size = 512
+    # valid_loader = instance_loader(valid_config, valid_batch_size, save_to_csv) 
     end_of_load = time.time()
     logging.info(f"Data loaded in {end_of_load - start_to_load} seconds")
     
@@ -76,7 +76,7 @@ def main_train():
     
     logging.info("Calling the train function")
     # Call the train function
-    train(model, data_loader, valid_loader, folder, filename, lr, n_steps, num_epochs, T)
+    train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
     #     with record_function("model_inference"):
     #         train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T)
