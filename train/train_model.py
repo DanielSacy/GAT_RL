@@ -16,7 +16,7 @@ now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 
 def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
-    max_grad_norm = 2.0
+    max_grad_norm = 5.0
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
@@ -37,7 +37,6 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         losses = torch.zeros(batch_size, device=device)
         memory = torch.zeros(batch_size, device=device)
 
-        times = []
         epoch_start = time.time()
         
         for i, batch in enumerate(data_loader):
