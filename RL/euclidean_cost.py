@@ -26,11 +26,11 @@ def euclidean_cost(static, actions, batch):
     tour_len = torch.sqrt(torch.sum(torch.pow(y[:, :-1] - y[:, 1:], 2), dim=2))
 
     # Sum the distances to get the total tour length for each batch
-    total_tour_len = tour_len.sum(1).detach()
+    total_tour_len = tour_len.sum(1)
 
     # Penalize depot visits
     depot_visits = (actions == 0).sum(dim=1)
     depot_penalty = 0.3 * (depot_visits)  # Subtract 1 to exclude the initial depot visit
     total_tour_len += depot_penalty
 
-    return total_tour_len.detach()
+    return total_tour_len
