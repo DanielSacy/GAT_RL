@@ -42,22 +42,22 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
+            memory_allocated = torch.cuda.memory_allocated()
             # Actor forward pass with multiple samples
             actions, log_p  = actor(batch, n_steps, greedy=False, T=T)
 
             # Compute the cost of the actions
-            cost = euclidean_cost(batch.x, actions.detach(), batch)  # Shape: (batch_size,)
+            cost = euclidean_cost(batch.x, actions, batch)  # Shape: (batch_size,)
             
             # Compute the surrogate loss - DiCE
             surrogate_loss = dice.cost_node(cost, [log_p])
             baseline_term = dice.batch_baseline_term(cost, [log_p])
             surrogate_loss_baseline = surrogate_loss + baseline_term       
             total_loss = surrogate_loss_baseline.mean()  # Mean over the samples
-            memory_allocated = torch.cuda.memory_allocated()
 
             # Backward pass
             actor_optim.zero_grad()
-            total_loss.backward()
+            total_loss.backward(create_graph=True)
             
             # Clip helps with the exploding and vanishing gradient problem
             total_grad_norm = torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
