@@ -20,8 +20,10 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         
         self.fc_node = Linear(node_input_dim, hidden_dim)
         self.fc_edge = Linear(edge_input_dim, edge_dim)
-        self.bn_node = BatchNorm(hidden_dim)
-        self.bn_edge = BatchNorm(edge_dim)
+        # self.bn_node = BatchNorm(hidden_dim)
+        # self.bn_edge = BatchNorm(edge_dim)
+        self.layer_norm = nn.LayerNorm(hidden_dim)
+        self.layer_norm_edge = nn.LayerNorm(edge_dim)
 
         self.edge_gat_layers = torch.nn.ModuleList(
             [EdgeGATConv(hidden_dim, hidden_dim, edge_dim, negative_slope, dropout) for _ in range(layers)]
@@ -50,8 +52,8 @@ class ResidualEdgeGATEncoder(torch.nn.Module):
         x = torch.cat([x, demand], dim=-1)
         
         # Node and edge embedding
-        x = self.bn_node(self.fc_node(x))
-        edge_attr = self.bn_edge(self.fc_edge(edge_attr))
+        x = self.layer_norm(self.fc_node(x))
+        edge_attr = self.layer_norm_edge(self.fc_edge(edge_attr))
                 
         # Apply Edge GAT with residual connection
         for edge_gat_layer in self.edge_gat_layers:
