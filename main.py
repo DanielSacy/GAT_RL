@@ -1,6 +1,7 @@
 import pandas as pd
 import torch
 import os
+import time
 import logging
 from src_batch.instance_creator.InstanceGenerator import InstanceGenerator
 from src_batch.model.Model import Model
@@ -25,13 +26,16 @@ def run_inference(model, data_loader, n_steps, greedy, T):
     with torch.inference_mode():
         for batch in data_loader:
             batch = batch.to(device)
+            start_time = time.time()
             actions, tour_logp = model(batch, n_steps, greedy, T)
             print("Tour Log Probabilities: ", tour_logp)
             # actions = torch.tensor(actions[0], dtype=torch.long, device=device)
             
             # Get the reward value for the batch
             reward = euclidean_cost_eval(batch.x, actions, batch)
-            
+            end_time = time.time()
+            print("Time taken: ", end_time - start_time)
+            runtime = round(end_time - start_time, 4)
             # Adding the depot {0} at the end of every route
             depot_tensor = torch.zeros(actions.size(0), 1, dtype=torch.long, device=actions.device)
             actions = torch.cat([depot_tensor, actions, depot_tensor], dim=1)
@@ -40,13 +44,13 @@ def run_inference(model, data_loader, n_steps, greedy, T):
             actions_list = actions.cpu().numpy().tolist()
             actions_str = ','.join(map(str, actions_list))
             
-            results.append((reward.item(), actions_str))
+            results.append((reward.item(), actions_str, runtime))
     return results
 
 def main():
     # Define paths
-    model_name = 'DiCE_noSample'
-    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Success\for_dissertation\DiCE_noSample\DiCE_noSample_best_model.pt"
+    model_name = 'DiCE_MISH'
+    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Success\for_dissertation\DiCE_MISH\DiCE_MISH_best_model.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Nodes3_Instances2.csv"
     data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Dissertation_Nodes10_Instances100.csv"
     
@@ -91,6 +95,7 @@ def main():
             df.at[first_occurrence_idx, 'GAT_BL_Solution'] = results_baseline[result_idx][1]
             df.at[first_occurrence_idx, f'{model_name}'] = results_trained[result_idx][0]
             df.at[first_occurrence_idx, f'{model_name}_Solution'] = results_trained[result_idx][1]
+            df.at[first_occurrence_idx, f'{model_name}_Runtime'] = results_trained[result_idx][2]
             # df.at[second_occurrence_idx, 'GAT_Baseline'] = "GAT_Trained"
             # df.at[second_occurrence_idx, 'GAT_BL_Solution'] = "GAT_T_Solution"
             # df.at[third_occurrence_idx, 'GAT_Baseline'] = results_trained[result_idx][0]
