@@ -60,7 +60,8 @@ class PointerAttention(nn.Module):
         # compatibility = (compatibility - compatibility.mean()) / (compatibility.std() + 1e-8)
 
         # Non-linear transformation
-        x = torch.tanh(compatibility)
+        x = F.mish(compatibility)
+        # x = torch.tanh(compatibility)
         
         # Scaling the values to avoid numerical instability
         x = x * (10)

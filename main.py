@@ -25,9 +25,9 @@ def run_inference(model, data_loader, n_steps, greedy, T):
     with torch.inference_mode():
         for batch in data_loader:
             batch = batch.to(device)
-            actions, tour_logp = model(batch, n_steps, greedy, T, num_samples=1)
+            actions, tour_logp = model(batch, n_steps, greedy, T)
             print("Tour Log Probabilities: ", tour_logp)
-            actions = torch.tensor(actions[0], dtype=torch.long, device=device)
+            # actions = torch.tensor(actions[0], dtype=torch.long, device=device)
             
             # Get the reward value for the batch
             reward = euclidean_cost_eval(batch.x, actions, batch)
@@ -45,9 +45,10 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 
 def main():
     # Define paths
-    model_path = r"actor.pt"
+    model_name = 'DiCE_noSample'
+    model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Success\for_dissertation\DiCE_noSample\DiCE_noSample_best_model.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Nodes3_Instances2.csv"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\validation\Nodes10_Instances100.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Dissertation_Nodes10_Instances100.csv"
     
     #Params
     node_input_dim = 3
@@ -88,8 +89,8 @@ def main():
             
             df.at[first_occurrence_idx, 'GAT_Baseline'] = results_baseline[result_idx][0]
             df.at[first_occurrence_idx, 'GAT_BL_Solution'] = results_baseline[result_idx][1]
-            df.at[first_occurrence_idx, 'GAT_Trained'] = results_trained[result_idx][0]
-            df.at[first_occurrence_idx, 'GAT_Trained_Solution'] = results_trained[result_idx][1]
+            df.at[first_occurrence_idx, f'{model_name}'] = results_trained[result_idx][0]
+            df.at[first_occurrence_idx, f'{model_name}_Solution'] = results_trained[result_idx][1]
             # df.at[second_occurrence_idx, 'GAT_Baseline'] = "GAT_Trained"
             # df.at[second_occurrence_idx, 'GAT_BL_Solution'] = "GAT_T_Solution"
             # df.at[third_occurrence_idx, 'GAT_Baseline'] = results_trained[result_idx][0]

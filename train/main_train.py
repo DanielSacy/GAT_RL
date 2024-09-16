@@ -31,8 +31,8 @@ def main_train():
     
     # Define the configurations for the instances
     config = [
-    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 768000}
-    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 51200}
+    {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 768000}
+    # {'n_customers': 20, 'max_demand': 10, 'max_distance': 100, 'num_instances': 100}
     # Add more configurations as needed
     ]
 

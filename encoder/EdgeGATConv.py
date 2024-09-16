@@ -47,7 +47,8 @@ class EdgeGATConv(MessagePassing):
 
         # Compute attention coefficients
         alpha = self.att_vector(x)
-        alpha = F.leaky_relu(alpha, self.negative_slope)
+        alpha = F.mish(alpha)
+        # alpha = F.leaky_relu(alpha, self.negative_slope)
         alpha = softmax(alpha, edge_index_i, num_nodes=size_i)
         
         # Sample attention coefficients

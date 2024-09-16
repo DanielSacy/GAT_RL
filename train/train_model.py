@@ -16,7 +16,7 @@ now = datetime.datetime.now().strftime("%Y-%m-%d %H")
 
 def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
     # Gradient clipping value
-    max_grad_norm = 5.0
+    max_grad_norm = 2.0
     
     # Instantiate the model and the optimizer
     actor = model.to(device)
@@ -42,7 +42,6 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
         for i, batch in enumerate(data_loader):
             batch = batch.to(device)
             
-            memory_allocated = torch.cuda.memory_allocated()
             # Actor forward pass with multiple samples
             actions, log_p  = actor(batch, n_steps, greedy=False, T=T)
 
@@ -54,10 +53,12 @@ def train(model, data_loader, folder, filename, lr, n_steps, num_epochs, T):
             baseline_term = dice.batch_baseline_term(cost, [log_p])
             surrogate_loss_baseline = surrogate_loss + baseline_term       
             total_loss = surrogate_loss_baseline.mean()  # Mean over the samples
+            
+            memory_allocated = torch.cuda.memory_allocated()
 
             # Backward pass
             actor_optim.zero_grad()
-            total_loss.backward(create_graph=True)
+            total_loss.backward()
             
             # Clip helps with the exploding and vanishing gradient problem
             total_grad_norm = torch.nn.utils.clip_grad_norm_(actor.parameters(), max_grad_norm, norm_type=2)
