@@ -50,10 +50,11 @@ def run_inference(model, data_loader, n_steps, greedy, T):
 
 def main():
     # Define paths
-    model_name = 'DiCE_noSample'
+    model_name = 'DiCE'
+    # model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Success\for_dissertation\Greedy_Rollout_Memo_Logging\Greedy_Rollout_Memo_Logging_best_model.pt"
     model_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Success\for_dissertation\DiCE_noSample\DiCE_noSample_best_model.pt"
     # data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Nodes3_Instances2.csv"
-    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Dissertation_Nodes10_Instances100.csv"
+    data_path = r"D:\DAY2DAY\MESTRADO\Codes\GNN\GAT_VRP1\gat_vrp1\src_batch\instances\Dissertation_Nodes20_Instances100.csv"
     
     #Params
     node_input_dim = 3
