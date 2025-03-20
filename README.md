@@ -3,11 +3,12 @@
 GAT_RL implements a Graph Attention Network (GAT)–based reinforcement‑learning solver for the Capacitated Vehicle Routing Problem (CVRP). This code originates from a dissertation project and had an article presented at ICORES 2025 and unifies recent advances in learned routing heuristics into a single end‑to‑end framework. At its core, GAT_RL combines the attention‑based encoder–decoder architecture introduced by Kool et al. in “Attention, Learn to Solve Routing Problems!” with the residual edge‑graph attention enhancements proposed by Lei et al. (2021) [ARXIV](https://arxiv.org/abs/2105.02730). Training relies on the DiCE estimator (Differentiable Monte Carlo Estimator) to eliminate dual‑actor overhead while preserving solution quality.
 
 Features
-Attention‑based GAT encoder with residual edge features
-DiCE estimator for low‑variance, single‑actor policy gradients
-Flexible decoding strategies (greedy, sampling, beam search)
-Synthetic and CVRPLIB benchmark support
-Near‑optimal solutions with inference in seconds
+- Attention‑based GAT encoder with residual edge features
+- DiCE estimator for low‑variance, single‑actor policy gradients
+- Flexible decoding strategies (greedy, sampling, beam search)
+- Synthetic and CVRPLIB benchmark support
+- Near‑optimal solutions with inference in seconds
+  
 Installation
 bash
 Copy
