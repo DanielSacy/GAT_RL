@@ -8,8 +8,12 @@ Features
 - Flexible decoding strategies (greedy, sampling, beam search)
 - Synthetic and CVRPLIB benchmark support
 - Near‑optimal solutions with inference in seconds
-  
-Installation
+
+# Installation
+git clone https://github.com/DanielSacy/GAT_RL.git
+cd GAT_RL
+pip install -r requirements.txt
+
 bash
 Copy
 git clone https://github.com/DanielSacy/GAT_RL.git
