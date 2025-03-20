@@ -10,6 +10,7 @@ Features
 - Near‑optimal solutions with inference in seconds
 
 # Installation
+``` bash
 git clone https://github.com/DanielSacy/GAT_RL.git
 cd GAT_RL
 pip install -r requirements.txt
